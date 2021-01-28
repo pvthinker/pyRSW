@@ -1,5 +1,5 @@
 import tracer
-from variables import State
+from variables import State, modelvar
 import operators
 
 
@@ -10,7 +10,7 @@ class TwoLayers(object):
         self.linear = linear
         self.grid = grid
         self.traclist = ['h']
-        self.state = State(param)
+        self.state = State(param, modelvar)
 
         self.orderA = param["orderA"]
         self.orderVF = param["orderVF"]

@@ -1,45 +1,92 @@
 import numpy as np
 import timescheme as ts
-import grid
-from variables import State
-from parameters import param
+import variables
 from bulk import Bulk
+import operators
+import tracer
+import plotting
 
 
 class RSW(object):
-    def __init__(self, param):
+    def __init__(self, param, grid):
         self.param = param
-        self.grid = grid.Grid(param)
-        self.state = State(param)
+        self.grid = grid
+        self.state = variables.State(param, variables.modelvar)
+        self.state.tracers = ["h"]  # <- TODO improve for the general case
+        self.set_coriolis()
         self.bulk = Bulk(param)
         self.timescheme = ts.Timescheme(param, self.state)
-        self.timescheme.set(self.rhs_prog, self.rhs_diag)
+        self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
+
+    def set_coriolis(self):
+        f = self.state.f
+        f[:] = self.param.f0*self.grid.area
+        #self.applybc(f)
 
     def run(self):
         ok = True
+        kite = 0
+        self.diagnose_var(self.state)
+
+        if self.param.plot_interactive:
+            fig = plotting.Figure(self.param, self.state, self.t)
+
         while ok:
             self.dt = self.compute_dt()
-            self.forward(self.t, self.dt)
+            self.timescheme.forward(self.state, self.t, self.dt)
 
-            if self.t >= self.tend:
+            if self.t >= self.param.tend:
                 ok = False
-            self.bulk.compute()
-            self.t += self.dt
+            else:
+                self.t += self.dt
+                kite += 1
 
-    def rhs_prog(self, state, t, dstate, last=False):
-        pass
+            if self.param.plot_interactive and (kite % self.param.freq_plot) == 0:
+                fig.update(self.t)
 
-    def rhs_diag(self, state):
-        pass
+            self.bulk.compute(self.state)
+            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f}"
+            print(time_string, end="")
+
+    def rhs(self, state, t, dstate, last=False):
+        dstate.set_to_zero()
+        # transport the tracers
+        tracer.rhstrac(state, dstate, self.param, last=last)
+        # vortex force
+        operators.vortex_force(state, dstate, self.param)
+        # bernoulli
+        operators.bernoulli(state, dstate, self.param)
+
+    def diagnose_var(self, state):
+        self.applybc(state.ux)
+        self.applybc(state.uy)
+        self.grid.cov_to_contra(state)
+
+        state.vor[:] = 0.
+        if not self.param.linear:
+            operators.vorticity(state)
+            operators.kinenergy(state, self.param)
+
+        self.applybc(state.vor)
+        operators.montgomery(state, self.param)
+
+    def applybc(self, scalar):
+        if self.param.geometry == "closed":
+            var = scalar.view("j")
+            var[..., 0, :] = 0.
+            var[..., -1, :] = 0.
+            var = scalar.view("i")
+            var[..., 0, :] = 0.
+            var[..., -1, :] = 0.
 
     def compute_dt(self):
-        if self.auto_dt:
+        if self.param.auto_dt:
             U_max = self.bulk.U_max
             if U_max == 0.0:
-                return self.dt_max
+                return self.param.dt_max
             else:
-                dt = self.cfl / U_max
-                return min(dt, self.dt_max)
+                dt = self.param.cfl / U_max
+                return min(dt, self.param.dt_max)
         else:
-            return self.dt0
+            return self.param.dt

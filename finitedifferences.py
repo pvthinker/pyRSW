@@ -22,11 +22,12 @@ from numba import decorators
 # option 2) import it and jit it here
 #from interpolation import interp1d as interp1d_raw
 from weno import wenoflux_edge2center
+from weno import wenoflux_center2edge
 #import weno
 wrapper = decorators._jit(None,
         locals={}, target="cpu", cache=False, targetoptions={})
 interp1d_etoc = wrapper(wenoflux_edge2center)
-#interp1d_ctoe = wrapper(weno.wenoflux_center2edge)
+interp1d_ctoe = wrapper(wenoflux_center2edge)
 
 cc = CC("finitediff")
 cc.verbose = True
@@ -64,13 +65,13 @@ def bernoulli(ke, p, u, linear):
         for k in range(shape[0]):
             for j in range(shape[1]):
                 for i in range(1, shape[2]):
-                    u[k, j, i] += p[k, j, i]-p[k, j, i-1]
+                    u[k, j, i] -= p[k, j, i]-p[k, j, i-1]
     else:
         # nonlinear case
         for k in range(shape[0]):
             for j in range(shape[1]):
                 for i in range(1, shape[2]):
-                    u[k, j, i] += p[k, j, i]-p[k, j, i-1]+ke[k, j, i]-ke[k, j, i-1]
+                    u[k, j, i] -= p[k, j, i]-p[k, j, i-1]+ke[k, j, i]-ke[k, j, i-1]
 
 
 @cc.export("curl",
@@ -80,13 +81,14 @@ def curl(v, vort, sign):
     if sign == 1:
         for k in range(shape[0]):
             for j in range(1, shape[1]-1):
-                for i in range(1, shape[2]-1):
+                for i in range(1, shape[2]):
                     vort[k, j, i] += v[k, j, i]-v[k, j, i-1]
     elif sign == -1:
         for k in range(shape[0]):
             for j in range(1, shape[1]-1):
-                for i in range(1, shape[2]-1):
+                for i in range(1, shape[2]):
                     vort[k, j, i] -= v[k, j, i]-v[k, j, i-1]
+
 
 
 @cc.export("compke",
@@ -170,10 +172,10 @@ def vortex_force(U, f, vor, dv, sign):
             for i in range(nx):
                 q[i] = vor[k,j,i]+f[j,i]
 
-            U0 = U[k,j,0] + U[k,j+1,0]
+            U0 = U[k,j-1,0] + U[k,j,0]
             for i in range(1, nx):
-                U1 = U[k,j,i] + U[k,j+1,i]
-                Um[i] = (U0+U1)/4
+                U1 = U[k,j-1,i] + U[k,j,i]
+                Um[i-1] = (U0+U1)/4
                 U0 = U1
 
             interp1d_etoc(q, Um, flux)
@@ -185,4 +187,15 @@ def vortex_force(U, f, vor, dv, sign):
                 for i in range(nx-1):
                     dv[k, j, i] -= flux[i]
 
+@cc.export("upwindtrac",
+           "void(f8[:, :, :], f8[:, :, :], f8[:, :, :])")
+def upwindtrac(field, U, dfield):
+    nz, ny, nx = field.shape
+    flux = np.zeros((nx+1,))
+    for k in range(nz):
+        for j in range(ny):
+            interp1d_ctoe(field[k,j], U[k,j], flux)
+            for i in range(nx):
+                dfield[k,j, i] -= flux[i+1]-flux[i]    
+    
 cc.compile()

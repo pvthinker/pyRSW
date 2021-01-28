@@ -159,8 +159,7 @@ def wenoflux_edge2center(q, U, flux):
     flux[k] = U[k]*qi
 
 
-@jit
-def wenoflux_center2edge(q, U, flux, qleft, qright):
+def wenoflux_center2edge(q, U, flux):
     """ compute flux = U * q
 
     staggering:
@@ -171,16 +170,19 @@ def wenoflux_center2edge(q, U, flux, qleft, qright):
     U and flux have the same shape
     q has one less element
     q[i] is on the *right* of U[i]
+
+    the function assumes a no incoming flux at the left and right
+    but allows for a non zero outgoing flux ...
     """
-    n = U.shape[0]
+    n = q.shape[0]
 
     k = 0
     if U[k] > 0:
-        # inflow condition
-        qi = qleft
+        # inflow condition -> no flux!
+        qi = 0.
     else:
         # upwind 1st
-        qi = q[k]
+        qi = 0.  # q[k]
     flux[k] = U[k]*qi
     k += 1
 
@@ -253,12 +255,12 @@ def wenoflux_center2edge(q, U, flux, qleft, qright):
         flux[k] = U[k]*qi
         k += 1
         # stop criterion
-        if (k == n-3) and (U[k] < 0):
+        if (k == n-2) and (U[k] < 0):
             ok = False
-        if (k == n-2):
+        if (k == n-1):
             ok = False
 
-    if (k == n-3): # which implies U[k] < 0
+    if (k == n-2): # which implies U[k] < 0
         # upwind 3rd
         qi = c3*q[k-1]+c2*q[k]+c1*q[k+1]
         flux[k] = U[k]*qi
@@ -266,19 +268,19 @@ def wenoflux_center2edge(q, U, flux, qleft, qright):
 
     if U[k]>0:
         # upwind 3rd
-        qi = c1*q[k-1]+c2*q[k]+c3*q[k+1]
+        qi = c1*q[k-2]+c2*q[k-1]+c3*q[k]
     else:
         # upwind 1st
-        qi = q[k+1]
+        qi = q[k]
     flux[k] = U[k]*qi
     k += 1
 
     if U[k]>0:
         # upwind 1st
-        qi = q[k-1]
+        qi = 0.#q[k-1]
     else:
-        #  inflow
-        qi = qright
+        #  inflow -> no flow
+        qi = 0.
     flux[k] = U[k]*qi
     
 
