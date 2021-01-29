@@ -23,11 +23,15 @@ from numba import decorators
 #from interpolation import interp1d as interp1d_raw
 from weno import wenoflux_edge2center
 from weno import wenoflux_center2edge
+from weno import linearflux_center2edge
+from weno import linearflux_edge2center
 #import weno
 wrapper = decorators._jit(None,
-        locals={}, target="cpu", cache=False, targetoptions={})
+                          locals={}, target="cpu", cache=False, targetoptions={})
 interp1d_etoc = wrapper(wenoflux_edge2center)
 interp1d_ctoe = wrapper(wenoflux_center2edge)
+interp1d_etoc_linear = wrapper(linearflux_edge2center)
+interp1d_ctoe_linear = wrapper(linearflux_center2edge)
 
 cc = CC("finitediff")
 cc.verbose = True
@@ -58,21 +62,51 @@ cc.verbose = True
 
 @cc.export("bernoulli",
            "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], boolean)")
-def bernoulli(ke, p, u, linear):
+def bernoulli(ke, p, du, linear):
     shape = p.shape
     if linear:
         # linear case, only pressure, no kinetic energy
         for k in range(shape[0]):
             for j in range(shape[1]):
                 for i in range(1, shape[2]):
-                    u[k, j, i] -= p[k, j, i]-p[k, j, i-1]
+                    du[k, j, i] -= p[k, j, i]-p[k, j, i-1]
     else:
         # nonlinear case
         for k in range(shape[0]):
             for j in range(shape[1]):
                 for i in range(1, shape[2]):
-                    u[k, j, i] -= p[k, j, i]-p[k, j, i-1]+ke[k, j, i]-ke[k, j, i-1]
+                    du[k, j, i] -= p[k, j, i]-p[k, j, i-1] + \
+                        ke[k, j, i]-ke[k, j, i-1]
 
+@cc.export("comppv",
+           "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :])")
+def comppv(vort, f, h, pv):
+    """ PV at cell corners
+    """
+    shape = vort.shape
+    for k in range(shape[0]):
+        for j in range(1, shape[1]-1):
+            h0 = h[k, j-1, 0]+h[k, j, 0]
+            for i in range(1, shape[2]-1):
+                h1 = h[k, j-1, i]+h[k, j, i]
+                hm = (h1+h0)/4
+                pv[k, j, i] = (vort[k, j, i]+f[j, i])/hm
+                h0 = h1
+
+@cc.export("comppv_c",
+           "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :])")
+def comppv_c(vor, f, h, pv):
+    """ PV at cell centers
+    """
+    shape = h.shape
+    for k in range(shape[0]):
+        for j in range(shape[1]):
+            v0 = vor[k, j+1, 0]+vor[k, j, 0]+f[j, 0]+f[j+1, 0]
+            for i in range(shape[2]):
+                v1 = vor[k, j+1, i+1]+vor[k, j, i+1]+f[j, i+1]+f[j+1, i+1]
+                vm = (v1+v0)/4
+                pv[k, j, i] = vm/h[k, j, i]
+                v0 = v1
 
 @cc.export("curl",
            "void(f8[:, :, :], f8[:, :, :], i4)")
@@ -81,14 +115,19 @@ def curl(v, vort, sign):
     if sign == 1:
         for k in range(shape[0]):
             for j in range(1, shape[1]-1):
-                for i in range(1, shape[2]):
+                for i in range(1, shape[2]-1):
                     vort[k, j, i] += v[k, j, i]-v[k, j, i-1]
+                # for i in range(shape[2]):
+                #     vort[k, j, i+1] -= v[k, j, i]
+                #     vort[k, j, i] += v[k, j, i]
     elif sign == -1:
         for k in range(shape[0]):
             for j in range(1, shape[1]-1):
-                for i in range(1, shape[2]):
+                for i in range(1, shape[2]-1):
                     vort[k, j, i] -= v[k, j, i]-v[k, j, i-1]
-
+                # for i in range(shape[2]):
+                #     vort[k, j, i+1] += v[k, j, i]
+                #     vort[k, j, i] -= v[k, j, i]
 
 
 @cc.export("compke",
@@ -149,7 +188,7 @@ def vortex_force(U, f, vor, dv, sign):
 
     interpolation is done along y !...
     so we use the convention [k, i, j]
-    
+
     2) along-y component of du
 
     du_y -= \interp_{x}(vor+f)*\bar_x\bar_y{U_x}
@@ -164,17 +203,16 @@ def vortex_force(U, f, vor, dv, sign):
     nz, ny, nx = vor.shape
     q = np.zeros((nx,))
     Um = np.zeros((nx-1,))
-    flux = np.zeros((nx-1,))    
-    
+    flux = np.zeros((nx-1,))
 
     for k in range(nz):
         for j in range(1, ny-1):
             for i in range(nx):
-                q[i] = vor[k,j,i]+f[j,i]
+                q[i] = vor[k, j, i]+f[j, i]
 
-            U0 = U[k,j-1,0] + U[k,j,0]
+            U0 = U[k, j-1, 0] + U[k, j, 0]
             for i in range(1, nx):
-                U1 = U[k,j-1,i] + U[k,j,i]
+                U1 = U[k, j-1, i] + U[k, j, i]
                 Um[i-1] = (U0+U1)/4
                 U0 = U1
 
@@ -194,8 +232,12 @@ def upwindtrac(field, U, dfield):
     flux = np.zeros((nx+1,))
     for k in range(nz):
         for j in range(ny):
-            interp1d_ctoe(field[k,j], U[k,j], flux)
+            interp1d_ctoe(field[k, j], U[k, j], flux)
             for i in range(nx):
-                dfield[k,j, i] -= flux[i+1]-flux[i]    
-    
+                dfield[k, j, i] -= flux[i+1]-flux[i]
+            # for i in range(1, nx):
+            #     dfield[k, j, i] += flux[i]
+            #     dfield[k, j, i-1] -= flux[i]
+
+
 cc.compile()

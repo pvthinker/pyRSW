@@ -43,6 +43,12 @@ modelvar = {
         "dimensions": ["z", "y", "x"],
         "unit": "L^2.T^-1",
         "prognostic": False},
+    "pv": {
+        "type": "vorticity",
+        "name": "potential vorticity",
+        "dimensions": ["z", "y", "x"],
+        "unit": "L.T^-1",
+        "prognostic": False},
     "ke": {
         "type": "scalar",
         "name": "kinetic energy",

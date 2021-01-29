@@ -12,6 +12,13 @@ c1 = -1./6.
 c2 = 5./6.
 c3 = 2./6.
 
+# fifth order
+d1 = 2./60.
+d2 = -13./60.
+d3 = 47./60.
+d4 = 27./60.
+d5 = -3./60.
+
 # weno 5th
 cff1 = 13/3.
 cff2 = 1./120.
@@ -159,6 +166,77 @@ def wenoflux_edge2center(q, U, flux):
     flux[k] = U[k]*qi
 
 
+def linearflux_edge2center(q, U, flux):
+    """ compute flux = U * q
+
+    staggering:
+
+    center: U, flux
+    edge: q
+
+    U and flux have the same shape
+    q has one more element
+    q[i] is on the *left* of U[i]
+    """
+    n = U.shape[0]
+
+    k = 0
+    if U[k] > 0:
+        # upwind 1st
+        qi = q[k]
+    else:
+        # upwind 3rd
+        qi = c3*q[k]+c2*q[k+1]+c1*q[k+2]
+    flux[k] = U[k]*qi
+    k += 1
+
+    if U[k] > 0:
+        # upwind 3rd
+        qi = c1*q[k-1]+c2*q[k]+c3*q[k+1]
+        flux[k] = U[k]*qi
+        k += 1
+
+    ok = True
+    while ok:
+        if U[k] > 0:
+            qmm = q[k-2]
+            qm = q[k-1]
+            q0 = q[k]
+            qp = q[k+1]
+            qpp = q[k+2]
+
+            qi = d1*qmm+d2*qm+d3*q0+d4*qp+d5*qpp
+        else:
+            qmm = q[k-1]
+            qm = q[k]
+            q0 = q[k+1]
+            qp = q[k+2]
+            qpp = q[k+3]
+            qi = d5*qmm+d4*qm+d3*q0+d2*qp+d1*qpp
+
+        flux[k] = U[k]*qi
+        k += 1
+        # stop criterion
+        if (k == n-2) and (U[k] < 0):
+            ok = False
+        if (k == n-1):
+            ok = False
+
+    if (k == n-2):  # which implies U[k] < 0
+        # upwind 3rd
+        qi = c3*q[k]+c2*q[k+1]+c1*q[k+2]
+        flux[k] = U[k]*qi
+        k += 1
+
+    if U[k] > 0:
+        # upwind 3rd
+        qi = c1*q[k-1]+c2*q[k]+c3*q[k+1]
+    else:
+        # upwind 1st
+        qi = q[k+1]
+    flux[k] = U[k]*qi
+
+
 def wenoflux_center2edge(q, U, flux):
     """ compute flux = U * q
 
@@ -260,13 +338,13 @@ def wenoflux_center2edge(q, U, flux):
         if (k == n-1):
             ok = False
 
-    if (k == n-2): # which implies U[k] < 0
+    if (k == n-2):  # which implies U[k] < 0
         # upwind 3rd
         qi = c3*q[k-1]+c2*q[k]+c1*q[k+1]
         flux[k] = U[k]*qi
         k += 1
 
-    if U[k]>0:
+    if U[k] > 0:
         # upwind 3rd
         qi = c1*q[k-2]+c2*q[k-1]+c3*q[k]
     else:
@@ -275,21 +353,102 @@ def wenoflux_center2edge(q, U, flux):
     flux[k] = U[k]*qi
     k += 1
 
-    if U[k]>0:
+    if U[k] > 0:
         # upwind 1st
-        qi = 0.#q[k-1]
+        qi = 0.  # q[k-1]
     else:
         #  inflow -> no flow
         qi = 0.
     flux[k] = U[k]*qi
-    
+
+
+def linearflux_center2edge(q, U, flux):
+    """ compute flux = U * q
+
+    staggering:
+
+    edge: U, flux
+    center: q
+
+    U and flux have the same shape
+    q has one less element
+    q[i] is on the *right* of U[i]
+
+    the function assumes a no incoming flux at the left and right
+    but allows for a non zero outgoing flux ...
+    """
+    n = q.shape[0]
+
+    k = 0
+    if U[k] > 0:
+        # inflow condition -> no flux!
+        qi = 0.
+    else:
+        # upwind 1st
+        qi = 0.  # q[k]
+    flux[k] = U[k]*qi
+    k += 1
+
+    if U[k] > 0:
+        # upwind 1st
+        qi = q[k-1]
+    else:
+        # upwind 3rd
+        qi = q[k]
+    flux[k] = U[k]*qi
+    k += 1
+
+    if U[k] > 0:
+        # upwind 3rd
+        qi = q[k-1]
+        flux[k] = U[k]*qi
+        k += 1
+
+    ok = True
+    while ok:
+        if U[k] > 0:
+            qi = q[k-1]
+        else:
+            qi = q[k]
+
+        flux[k] = U[k]*qi
+        k += 1
+        # stop criterion
+        if (k == n-2) and (U[k] < 0):
+            ok = False
+        if (k == n-1):
+            ok = False
+
+    if (k == n-2):  # which implies U[k] < 0
+        # upwind 3rd
+        qi = q[k]
+        flux[k] = U[k]*qi
+        k += 1
+
+    if U[k] > 0:
+        # upwind 3rd
+        qi = q[k-1]
+    else:
+        # upwind 1st
+        qi = q[k]
+    flux[k] = U[k]*qi
+    k += 1
+
+    if U[k] > 0:
+        # upwind 1st
+        qi = 0.  # q[k-1]
+    else:
+        #  inflow -> no flow
+        qi = 0.
+    flux[k] = U[k]*qi
+
 
 if __name__ == '__main__':
     nx = 100
     dx = 0.05
     xe = (np.arange(nx+1)-0.5)*dx
     xc = np.arange(nx)*dx
-    q = np.sin(20*xe) 
+    q = np.sin(20*xe)
     flux = np.zeros((nx,))
     U = np.ones((nx,))
 

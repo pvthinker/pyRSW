@@ -10,20 +10,24 @@ from rsw import RSW
 param = Param()
 
 param.nz = 1
-param.ny = 128
-param.nx = 128
+param.ny = 200
+param.nx = 200
 param.Lx = 1.
 param.Ly = 1.
 param.auto_dt = False
 param.cfl = 0.25
-param.dt = 1e-2/5
-param.tend = 10.
-param.plotvar = "h"
+param.dt = 1e-2/8
+param.tend = 10
+param.plotvar = "vor"
 param.freq_plot = 20
+param.freq_his = .05
 param.plot_interactive = True
+param.colorscheme = "auto"
+param.cax = [1.1e-4, 1.3e-4]
+param.generate_mp4 = False
 param.linear = False
 param.timestepping = "RK3_SSP"
-param.f0 = .4
+param.f0 = 5.
 
 grid = Grid(param)
 
@@ -44,7 +48,7 @@ f = param.f0
 d = 0.1  # vortex radius
 dsep = d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = 0.05
+amp = -0.8
 
 
 def vortex(x1, y1, x0, y0, d):

@@ -1,6 +1,22 @@
 import finitediff as fd
 
 
+def comppv(state):
+    vor = state.vor.view("i")
+    f = state.f.view("i")
+    h = state.h.view("i")
+    pv = state.pv.view("i")
+    fd.comppv(vor, f, h, pv)
+
+
+def comppv_c(state):
+    vor = state.vor.view("i")
+    f = state.f.view("i")
+    h = state.h.view("i")
+    pv = state.pv.view("i")
+    fd.comppv_c(vor, f, h, pv)
+
+
 def vorticity(state):
     # + dv/dx
     v = state.u["j"].view("i")
@@ -45,7 +61,6 @@ def montgomery(state, param):
     hb = state.hb.view("i")
     p = state.p.view("i")
     p[:] = g*h
-    
 
 
 def vortex_force(state, dstate, param):
@@ -62,7 +77,7 @@ def vortex_force(state, dstate, param):
     f = state.f.view("i")
     # dv/dt -= (vor+f) * U
     fd.vortex_force(U, f, vor, dv, -1)
-    
+
 
 def bernoulli(state, dstate, param):
     du = dstate.u["i"].view("i")

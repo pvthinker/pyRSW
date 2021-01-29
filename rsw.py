@@ -6,6 +6,7 @@ from bulk import Bulk
 import operators
 import tracer
 import plotting
+from ncio import Ncio
 
 
 class RSW(object):
@@ -19,6 +20,8 @@ class RSW(object):
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
+
+        self.io = Ncio(param, grid, self.state)
 
     def set_coriolis(self):
         f = self.state.f
@@ -34,6 +37,9 @@ class RSW(object):
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.state, self.t)
 
+        self.io.dohis(self.state, self.t)
+        nexthistime = self.t + self.param.freq_his
+
         while self.ok:
             self.dt = self.compute_dt()
             self.timescheme.forward(self.state, self.t, self.dt)
@@ -48,7 +54,12 @@ class RSW(object):
                 fig.update(self.t)
 
             self.bulk.compute(self.state)
-            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f}"
+
+            if self.t >= nexthistime:
+                self.io.dohis(self.state, self.t)
+                nexthistime += self.param.freq_his
+
+            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} nexthis={nexthistime:.2f}"
             print(time_string, end="")
 
         if self.param.plot_interactive:
@@ -64,8 +75,8 @@ class RSW(object):
         operators.bernoulli(state, dstate, self.param)
 
     def diagnose_var(self, state):
-        self.applybc(state.ux)
-        self.applybc(state.uy)
+        # self.applybc(state.ux)
+        # self.applybc(state.uy)
         self.grid.cov_to_contra(state)
 
         state.vor[:] = 0.
@@ -73,7 +84,7 @@ class RSW(object):
             operators.vorticity(state)
             operators.kinenergy(state, self.param)
 
-        self.applybc(state.vor)
+        # self.applybc(state.vor)
         operators.montgomery(state, self.param)
         operators.comppv(state)
 
@@ -101,5 +112,3 @@ class RSW(object):
         if self.param.myrank == 0:
             print('\n hit ctrl-C, stopping', end='')
         self.ok = False
-
-

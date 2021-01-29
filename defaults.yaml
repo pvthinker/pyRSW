@@ -62,7 +62,7 @@ output:
     doc: Interval of time between two output in the diag file
     type: float
   freq_his:
-    default: 1.
+    default: 10.
     doc: Interval of time between two output in the history file
     type: float
   nprint:
