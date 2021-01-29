@@ -50,3 +50,6 @@ class Figure(object):
         if self.param.generate_mp4:
             self.mov.addframe()
 
+    def finalize(self):
+        if self.param.generate_mp4:
+            self.mov.finalize()

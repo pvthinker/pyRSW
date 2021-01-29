@@ -49,6 +49,9 @@ class RSW(object):
             time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f}"
             print(time_string, end="")
 
+        if self.param.plot_interactive:
+            fig.finalize()
+
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
         # transport the tracers
@@ -70,7 +73,8 @@ class RSW(object):
 
         self.applybc(state.vor)
         operators.montgomery(state, self.param)
-
+        operators.comppv(state)
+        
     def applybc(self, scalar):
         if self.param.geometry == "closed":
             var = scalar.view("j")
