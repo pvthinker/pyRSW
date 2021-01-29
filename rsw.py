@@ -1,4 +1,5 @@
 import numpy as np
+import signal
 import timescheme as ts
 import variables
 from bulk import Bulk
@@ -22,22 +23,23 @@ class RSW(object):
     def set_coriolis(self):
         f = self.state.f
         f[:] = self.param.f0*self.grid.area
-        #self.applybc(f)
 
     def run(self):
-        ok = True
+        self.ok = True
         kite = 0
         self.diagnose_var(self.state)
+
+        signal.signal(signal.SIGINT, self.signal_handler)
 
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.state, self.t)
 
-        while ok:
+        while self.ok:
             self.dt = self.compute_dt()
             self.timescheme.forward(self.state, self.t, self.dt)
 
             if self.t >= self.param.tend:
-                ok = False
+                self.ok = False
             else:
                 self.t += self.dt
                 kite += 1
@@ -74,7 +76,7 @@ class RSW(object):
         self.applybc(state.vor)
         operators.montgomery(state, self.param)
         operators.comppv(state)
-        
+
     def applybc(self, scalar):
         if self.param.geometry == "closed":
             var = scalar.view("j")
@@ -94,3 +96,10 @@ class RSW(object):
                 return min(dt, self.param.dt_max)
         else:
             return self.param.dt
+
+    def signal_handler(self, signal, frame):
+        if self.param.myrank == 0:
+            print('\n hit ctrl-C, stopping', end='')
+        self.ok = False
+
+
