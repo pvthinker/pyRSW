@@ -28,7 +28,7 @@ module during the __init__. The reason is that for multistages
 timeschemes, we need to store more than just one dstate
 
 """
-
+import optimize as opt
 
 class Timescheme(object):
     """Catalogue and handler of timeschemes.
@@ -201,24 +201,32 @@ class Timescheme(object):
         for scalar_name in self.prognostic_scalars:
             s = state.get(scalar_name).view("i")
             ds = self.ds0.get(scalar_name).view("i")
-            s += dt * ds
+            #s += dt * ds
+            opt.add1(s, ds, dt)
         self.diagnose_var(state)
 
         self.rhs(state, t+dt, self.ds1, last=False)
+        c0 = -0.75*dt
+        c1 = 0.25*dt
         for scalar_name in self.prognostic_scalars:
             s = state.get(scalar_name).view("i")
             ds0 = self.ds0.get(scalar_name).view("i")
             ds1 = self.ds1.get(scalar_name).view("i")
-            s += (dt/4.) * (ds1-3*ds0)
+            #s += (dt/4.) * (ds1-3*ds0)
+            opt.add2(s, ds0, c0, ds1, c1)
         self.diagnose_var(state)
 
         self.rhs(state, t+dt*0.5, self.ds2, last=True)
+        c0 = -dt/12.
+        c1 = c0
+        c2 = 2*dt/3.
         for scalar_name in self.prognostic_scalars:
             s = state.get(scalar_name).view("i")
             ds0 = self.ds0.get(scalar_name).view("i")
             ds1 = self.ds1.get(scalar_name).view("i")
             ds2 = self.ds2.get(scalar_name).view("i")
-            s += (dt/12.) * (8*ds2-ds0-ds1)
+            #s += (dt/12.) * (8*ds2-ds0-ds1)
+            opt.add3(s, ds0, c0, ds1, c1, ds2, c2)
         self.diagnose_var(state)
 
 

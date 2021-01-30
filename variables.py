@@ -191,11 +191,11 @@ class Scalar(object):
         domainindices = []
         for dim in "zyx":
             if dim == "x":
-                leftneighb = (0, -1) in neighbours
-                rightneighb = (0, +1) in neighbours
+                leftneighb = (0, 0, -1) in neighbours
+                rightneighb = (0, 0, +1) in neighbours
             elif dim == "y":
-                leftneighb = (-1, 0) in neighbours
-                rightneighb = (+1, 0) in neighbours
+                leftneighb = (0, -1, 0) in neighbours
+                rightneighb = (0, +1, 0) in neighbours
             else:
                 leftneighb = rightneighb = False
 

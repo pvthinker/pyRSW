@@ -6,17 +6,19 @@ import numpy as np
 from variables import Scalar
 import topology as topo
 
+
 def set_domain_decomposition(param):
     topo.topology = param["geometry"]
     procs = [1, param["npy"], param["npx"]]
-    myrank = 0#mpitools.get_myrank(procs)
+    myrank = 0  # mpitools.get_myrank(procs)
     loc = topo.rank2loc(myrank, procs)
     neighbours = topo.get_neighbours(loc, procs)
     param["procs"] = procs
     param["myrank"] = myrank
     param["neighbours"] = neighbours
     param["loc"] = loc
-    
+
+
 class Grid(object):
     def __init__(self, param):
 
@@ -58,14 +60,17 @@ class Grid(object):
                "prognostic": False, "dimensions": ["y", "x"]}
         # at cell centers
         dummy = Scalar("dummy", var, param, stagg="")
+        ny, nx = dummy.shape
+        self.shape = (ny, nx)
+
         j0, j1, i0, i1 = dummy.domainindices
-        self.xc = (0.5+np.arange(self.nx)-i0)*self.dx+x0
-        self.yc = (0.5+np.arange(self.ny)-j0)*self.dy+y0
+        self.xc = (0.5+np.arange(nx)-i0)*self.dx+x0
+        self.yc = (0.5+np.arange(ny)-j0)*self.dy+y0
         # at cell edges
         dummy = Scalar("dummy", var, param, stagg="xy")
         j0, j1, i0, i1 = dummy.domainindices
-        self.xe = (np.arange(self.nx+1)-i0)*self.dx+x0
-        self.ye = (np.arange(self.ny+1)-j0)*self.dy+y0
+        self.xe = (np.arange(nx+1)-i0)*self.dx+x0
+        self.ye = (np.arange(ny+1)-j0)*self.dy+y0
 
     def sum(self, array3d):
         """ compute the global domain sum of array3d
@@ -86,4 +91,3 @@ class Grid(object):
         v = state.uy.view("i")
         U[:] = u * self.idx2
         V[:] = v * self.idy2
-        

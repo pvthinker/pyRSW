@@ -2,9 +2,9 @@ import numpy as np
 from math import exp
 from numba.pycc import CC
 from numba.pycc import compiler
-import numba.types as types
-from numba import jit, generated_jit
-from numba import sigutils, typing
+#import numba.types as types
+#from numba import jit, generated_jit
+#from numba import sigutils, typing
 from numba import decorators
 
 # @jit
@@ -89,7 +89,7 @@ def comppv(vort, f, h, pv):
             h0 = h[k, j-1, 0]+h[k, j, 0]
             for i in range(1, shape[2]-1):
                 h1 = h[k, j-1, i]+h[k, j, i]
-                hm = (h1+h0)/4
+                hm = (h1+h0)*.25
                 pv[k, j, i] = (vort[k, j, i]+f[j, i])/hm
                 h0 = h1
 
@@ -104,7 +104,7 @@ def comppv_c(vor, f, h, pv):
             v0 = vor[k, j+1, 0]+vor[k, j, 0]+f[j, 0]+f[j+1, 0]
             for i in range(shape[2]):
                 v1 = vor[k, j+1, i+1]+vor[k, j, i+1]+f[j, i+1]+f[j+1, i+1]
-                vm = (v1+v0)/4
+                vm = (v1+v0)*.25
                 pv[k, j, i] = vm/h[k, j, i]
                 v0 = v1
 
@@ -115,19 +115,13 @@ def curl(v, vort, sign):
     if sign == 1:
         for k in range(shape[0]):
             for j in range(1, shape[1]-1):
-                for i in range(1, shape[2]-1):
+                for i in range(1, shape[2]):
                     vort[k, j, i] += v[k, j, i]-v[k, j, i-1]
-                # for i in range(shape[2]):
-                #     vort[k, j, i+1] -= v[k, j, i]
-                #     vort[k, j, i] += v[k, j, i]
     elif sign == -1:
         for k in range(shape[0]):
             for j in range(1, shape[1]-1):
-                for i in range(1, shape[2]-1):
+                for i in range(1, shape[2]):
                     vort[k, j, i] -= v[k, j, i]-v[k, j, i-1]
-                # for i in range(shape[2]):
-                #     vort[k, j, i+1] += v[k, j, i]
-                #     vort[k, j, i] -= v[k, j, i]
 
 
 @cc.export("compke",
@@ -140,7 +134,7 @@ def compke(u, U, ke, sign):
                 ke0 = u[k, j, 0]*U[k, j, 0]
                 for i in range(shape[2]):
                     ke1 = u[k, j, i+1]*U[k, j, i+1]
-                    ke[k, j, i] = (ke0+ke1)/4
+                    ke[k, j, i] = (ke0+ke1)*.25
                     ke0 = ke1
     elif sign == 1:
         for k in range(shape[0]):
@@ -148,7 +142,7 @@ def compke(u, U, ke, sign):
                 ke0 = u[k, j, 0]*U[k, j, 0]
                 for i in range(shape[2]):
                     ke1 = u[k, j, i+1]*U[k, j, i+1]
-                    ke[k, j, i] += (ke0+ke1)/4
+                    ke[k, j, i] += (ke0+ke1)*.25
                     ke0 = ke1
 
 
@@ -205,6 +199,9 @@ def vortex_force(U, f, vor, dv, sign):
     Um = np.zeros((nx-1,))
     flux = np.zeros((nx-1,))
 
+    # for I in np.ndindex(nz, ny-2):
+    #     k, j = I
+    #     j += 1
     for k in range(nz):
         for j in range(1, ny-1):
             for i in range(nx):
@@ -213,7 +210,7 @@ def vortex_force(U, f, vor, dv, sign):
             U0 = U[k, j-1, 0] + U[k, j, 0]
             for i in range(1, nx):
                 U1 = U[k, j-1, i] + U[k, j, i]
-                Um[i-1] = (U0+U1)/4
+                Um[i-1] = (U0+U1)*.25
                 U0 = U1
 
             interp1d_etoc(q, Um, flux)
@@ -230,14 +227,16 @@ def vortex_force(U, f, vor, dv, sign):
 def upwindtrac(field, U, dfield):
     nz, ny, nx = field.shape
     flux = np.zeros((nx+1,))
-    for k in range(nz):
-        for j in range(ny):
-            interp1d_ctoe(field[k, j], U[k, j], flux)
-            for i in range(nx):
-                dfield[k, j, i] -= flux[i+1]-flux[i]
-            # for i in range(1, nx):
-            #     dfield[k, j, i] += flux[i]
-            #     dfield[k, j, i-1] -= flux[i]
+    for I in np.ndindex(nz, ny):
+        k,j = I
+        interp1d_ctoe(field[k,j], U[k,j], flux)
+        for i in range(nx):
+            dfield[k, j, i] -= flux[i+1]-flux[i]
+    # for k in range(nz):
+    #     for j in range(ny):
+    #         interp1d_ctoe(field[k, j], U[k, j], flux)
+    #         for i in range(nx):
+    #             dfield[k, j, i] -= flux[i+1]-flux[i]
 
 
 cc.compile()

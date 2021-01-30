@@ -13,6 +13,7 @@ class RSW(object):
     def __init__(self, param, grid):
         self.param = param
         self.grid = grid
+        self.shape = grid.shape
         self.state = variables.State(param, variables.modelvar)
         self.state.tracers = ["h"]  # <- TODO improve for the general case
         self.set_coriolis()
@@ -31,6 +32,7 @@ class RSW(object):
         self.ok = True
         kite = 0
         self.diagnose_var(self.state)
+        self.diagnose_supplementary(self.state)
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
@@ -51,11 +53,15 @@ class RSW(object):
                 kite += 1
 
             if self.param.plot_interactive and (kite % self.param.freq_plot) == 0:
+                if self.param.plotvar == "pv":
+                    self.diagnose_supplementary(self.state)
+
                 fig.update(self.t)
 
             self.bulk.compute(self.state)
 
             if self.t >= nexthistime:
+                self.diagnose_supplementary(self.state)
                 self.io.dohis(self.state, self.t)
                 nexthistime += self.param.freq_his
 
@@ -75,8 +81,9 @@ class RSW(object):
         operators.bernoulli(state, dstate, self.param)
 
     def diagnose_var(self, state):
-        # self.applybc(state.ux)
-        # self.applybc(state.uy)
+        self.applybc(state.h)
+        self.applybc(state.ux)
+        self.applybc(state.uy)
         self.grid.cov_to_contra(state)
 
         state.vor[:] = 0.
@@ -84,11 +91,14 @@ class RSW(object):
             operators.vorticity(state)
             operators.kinenergy(state, self.param)
 
-        # self.applybc(state.vor)
+        self.applybc(state.vor)
         operators.montgomery(state, self.param)
+
+    def diagnose_supplementary(self, state):
         operators.comppv(state)
 
     def applybc(self, scalar):
+        ny, nx = self.shape
         if self.param.geometry == "closed":
             var = scalar.view("j")
             var[..., 0, :] = 0.
@@ -96,6 +106,16 @@ class RSW(object):
             var = scalar.view("i")
             var[..., 0, :] = 0.
             var[..., -1, :] = 0.
+        if self.param.geometry == "perio_x":
+            nh = self.param.nh
+            nh2 = nh+nh
+            var = scalar.view("i")
+            if scalar.shape[-1] == nx:
+                var[..., :nh] = var[..., -nh2:-nh]
+                var[..., -nh:] = var[..., nh:nh2]
+            else:
+                var[..., :nh+1] = var[..., -nh2-1:-nh]
+                var[..., -nh-1:] = var[..., nh:nh2+1]
 
     def compute_dt(self):
         if self.param.auto_dt:
