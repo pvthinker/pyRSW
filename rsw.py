@@ -1,8 +1,22 @@
 import numpy as np
 import signal
-import timescheme as ts
 import variables
 from bulk import Bulk
+
+# if these modules aren't yet compiled, do it
+try:
+    import finitediff
+except:
+    import finitedifferences as FD
+    FD.compile()
+
+try:
+    import optimize
+except:
+    import optimizers as OPT
+    OPT.compile()
+
+import timescheme as ts
 import operators
 import tracer
 import plotting
