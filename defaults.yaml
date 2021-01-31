@@ -1,190 +1,192 @@
+#
+# Defaults parameters for pyRSW
+#
+#--------------------
 space:
+
   Lx:
     default: 1.
     doc: Domain length along x
     type: float
+
   Ly:
     default: 1.
     doc: Domain length along y
     type: float
+
   geometry:
     avail: closed, perio_x, perio_y, perio_xy
     default: closed
     doc: Domain shape. It offers a bunch of predefined masks. You may change it in your script.
     type: str
+
   nx:
     default: 128
     doc: Number of gridpoints in x direction in the global grid
     type: int
+
   ny:
     default: 128
     doc: Number of gridpoints in y direction in the global grid
     type: int
+
   nz:
     default: 1
     doc: Number of layers
     type: int
+
   npx:
     default: 1
     doc: Number of subdomains in x
     type: int
+
   npy:
     default: 1
     doc: Number of subdomains in y
     type: int
+
   npz:
     default: 1
     doc: Number of subdomains in z. It has to be 1
     type: int
 
+
+#--------------------
 numerics:
+
   nh:
     default: 3
     doc: Number of ghost points in the halo
     type: int
+
   time_order:
     default: 5
     doc: Order of the advective flux discretization. Should be in [1,2,3,4,5]. 1,3,5 are upwind fluxes, 2,4 are centered fluxes
     type: int
+
   timestepping:
     avail: EF,LF, Heun, RK3_SSP,AB2,AB3,RK4_LS
     default: RK3_SSP
     doc: Time scheme
     type: str
 
+#--------------------
 output:
+
   exacthistime:
     default: True
     doc: Adjust the time step so that history I/O is done at exact desired time
     type: bool
+
   freq_diag:
     default: 1.
     doc: Interval of time between two output in the diag file
     type: float
+
   freq_his:
     default: 10.
     doc: Interval of time between two output in the history file
     type: float
+
   nprint:
     default: 20
     doc: Numer of time steps between two prints
     type: int
+
   var_to_save:
     default: vorticity
     doc: List of variables names that we want to output in the history file. The variables names have to be consistent with the model
     type: str
 
+#--------------------
 physics:
+
   g:
     default: 1.
     doc: acceleration of gravity
     type: float    
+
   f0:
     default: 1.
     doc: Coriolis parameter
     type: float
+
   rho:
     default: 1.
     doc: density of each layer
     type: list
+
   H:
     default: 1.
     doc: thickness of each layer
     type: list
+
   linear:
     default: True
     doc: If True use the linearized equations
     type: bool
+
   Kdiff:
     default: 0.
     doc: Diffusion coefficient. Has to be set manually. It should depends on the resolution.
     type: float
-  ageostrophic:
-    default: False
-    doc: Activate the diagnostic of the ageostrophic velocity (QG model)
-    type: bool
-  bottom_torque:
-    default: False
-    doc: Activate the diagnostic of the bottom torque (QG model)
-    type: bool
-  customized:
-    default: False
-    doc: Customize the time step. If activated you should provide the name of the custom module
-    type: bool
-  diffusion:
-    default: False
-    doc: Add or not a diffusion term on tracer
-    type: bool
-  enforce_momentum:
-    default: False
-    doc: Enforce the global momentum conservation in closed domain in unforced case
-    type: bool
+
   forcing:
     default: False
     doc: Activate a forcing. Needs to provide the name of the forcing routine
     type: bool
-  hydroepsilon:
-    default: 1.
-    doc: Parameter controlling the transition hydro/non-hydro. 1=non-hydrostatic,
-      0. = strictly hydrostatic (unstable), minimal value 0.2
-    type: float
+
   noslip:
     default: False
     doc: Add a noslip condition along the boundaries
     type: bool
-  spongelayer:
-    default: False
-    doc: Add a sponge layer, works only for the von karman experiment
-    type: bool
 
+#--------------------
 plotting options:
+
   cmap:
     avail: needs to be in the pyplot list
     default: RdBu_r
     doc: set the colormap
     type: str
+
   colorscheme:
-    avail: auto,imposed
+    avail: auto, imposed
     default: auto
     doc: Method to adjust the colorscale
     type: str
+
   cax:
     default: (-1., 1.)
     doc: min, max values for the colorrange
     type: list    
+
   freq_plot:
     default: 1
     doc: number of iterations between two plotting refresh
     type: int
+
   generate_mp4:
     default: False
     doc: generate a mp4 video file on the fly
     type: bool
+
   plotvar:
     default: h
     doc: name of the variable to plot
     type: str
+
   imshow_interpolation:
     avail: nearest, bilinear
     default: nearest
     doc: Interpolation scheme for the imshow rendering
     type: str
+
   plot_interactive:
     default: True
     doc: Set on the interactive plotting. Turn it off to speed up the computation
     type: bool
-  plot_psi:
-    default: False
-    doc: Add iso-contours of psi, the streamfunction
-    type: bool
-  plot_pvback:
-    default: False
-    doc: Add iso-contours of pvback, the background pv (QG model)
-    type: bool
-  plot_ua:
-    default: False
-    doc: Add quiver of the ageostrophic velocity (QG model only)
-    type: bool
+
   plotting_module:
     avail: a_user_file_name
     default: plotting
@@ -192,23 +194,29 @@ plotting options:
       core/plotting.py
     type: str
 
+#--------------------
 time:
+
   cfl:
     default: 0.5
     doc: desired cfl that sets the time step in the case of `adaptable_dt`. dt is computed in core/fluid2d.py
     type: float
+
   auto_dt:
     default: True
     doc: whether to use a varying time step or a constant one
     type: bool
+
   dt_max:
     default: 0.01
     doc: maximum time step to use
     type: float
+
   dt:
     default: 0.01
     doc: time step to use when it is constant
     type: float
+
   tend:
     default: 1.
     doc: integration time
