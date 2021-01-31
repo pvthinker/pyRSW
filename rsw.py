@@ -99,13 +99,13 @@ class RSW(object):
 
     def applybc(self, scalar):
         ny, nx = self.shape
-        if self.param.geometry == "closed":
-            var = scalar.view("j")
-            var[..., 0, :] = 0.
-            var[..., -1, :] = 0.
-            var = scalar.view("i")
-            var[..., 0, :] = 0.
-            var[..., -1, :] = 0.
+        # if self.param.geometry == "closed":
+        #     var = scalar.view("j")
+        #     var[..., 0, :] = 0.
+        #     var[..., -1, :] = 0.
+        #     var = scalar.view("i")
+        #     var[..., 0, :] = 0.
+        #     var[..., -1, :] = 0.
         if self.param.geometry == "perio_x":
             nh = self.param.nh
             nh2 = nh+nh
