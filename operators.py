@@ -60,7 +60,7 @@ def montgomery(state, param):
     h = state.h.view("i")
     hb = state.hb.view("i")
     p = state.p.view("i")
-    p[:] = g*h
+    p[:] = g*(h+hb)
 
 
 def vortex_force(state, dstate, param):
