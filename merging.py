@@ -10,21 +10,22 @@ from rsw import RSW
 param = Param()
 
 param.nz = 1
-param.ny = 200
-param.nx = 200
+param.ny = 128
+param.nx = 128
 param.Lx = 1.
 param.Ly = 1.
 param.auto_dt = False
+param.geometry = "closed"
 param.cfl = 0.25
-param.dt = 1e-2/8
-param.tend = 10
+param.dt = 1e-2/2
+param.tend = 10.
 param.plotvar = "vor"
-param.freq_plot = 20
-param.freq_his = .05
+param.freq_plot = 8
+param.freq_his = 0.5
 param.plot_interactive = True
-param.colorscheme = "auto"
-param.cax = [1.1e-4, 1.3e-4]
-param.generate_mp4 = False
+param.colorscheme = "imposed"
+param.cax = np.asarray([-2e-4, 12e-4])
+param.generate_mp4 = True
 param.linear = False
 param.timestepping = "RK3_SSP"
 param.f0 = 5.
@@ -37,9 +38,11 @@ xc, yc = grid.xc, grid.yc
 xe, ye = grid.xe, grid.ye
 
 h = model.state.h
+hb = model.state.hb
 u = model.state.ux
 v = model.state.uy
 
+h0 = param.H
 g = param.g
 f = param.f0
 
@@ -48,8 +51,9 @@ f = param.f0
 d = 0.1  # vortex radius
 dsep = d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.8
-
+amp = -0.5
+hmin = 1e-3
+x0 = 0.5
 
 def vortex(x1, y1, x0, y0, d):
     xx, yy = np.meshgrid(x1, y1)
@@ -61,11 +65,15 @@ def dambreak(x1, y1, x0, y0, sigma,slope=0.):
     return np.tanh((slope*(xx-x0)-(yy-y0))/sigma)
 
 
-h0 = param.H
 h[0] = h0
 #h[0] += amp*dambreak(xc, yc, 0.5, 0.5-dsep, d)
-h[0] += amp*vortex(xc, yc, 0.5, 0.5-dsep, d)
-h[0] += amp*vortex(xc, yc, 0.5, 0.5+dsep, d)
+h[0] += amp*vortex(xc, yc, x0, 0.5-dsep, d)
+h[0] += amp*vortex(xc, yc, x0, 0.5+dsep, d)
+#h[0] = np.maximum(hmin, h[0])
+
+# topography
+hb[:] = 0.4*vortex(xc, yc, x0+dsep, 0.5, d)
+
 
 # to set initial geostropic adjustement
 # define exactly the same height but at corner cells...
@@ -75,8 +83,9 @@ h[0] += amp*vortex(xc, yc, 0.5, 0.5+dsep, d)
 hF = model.state.vor
 hF[0] = h0
 #hF[0] += amp*dambreak(xe, ye, 0.5, 0.5-dsep, d)
-hF[0] += amp*vortex(xe, ye, 0.5, 0.5-dsep, d)
-hF[0] += amp*vortex(xe, ye, 0.5, 0.5+dsep, d)
+hF[0] += amp*vortex(xe, ye, x0, 0.5-dsep, d)
+hF[0] += amp*vortex(xe, ye, x0, 0.5+dsep, d)
+#hF[0] = np.maximum(hmin, hF[0])
 
 
 def grad(phi, dphidx, dphidy):
