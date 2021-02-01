@@ -94,7 +94,7 @@ output:
     type: int
 
   var_to_save:
-    default: vorticity
+    default: [h, u, vor, pv]
     doc: List of variables names that we want to output in the history file. The variables names have to be consistent with the model
     type: str
 

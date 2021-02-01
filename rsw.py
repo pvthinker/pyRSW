@@ -53,6 +53,7 @@ class RSW(object):
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.state, self.t)
 
+        self.io.create_history_file(self.state, self.grid)
         self.io.dohis(self.state, self.t)
         nexthistime = self.t + self.param.freq_his
 
