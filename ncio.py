@@ -1,6 +1,8 @@
 import os
+import shutil
 import numpy as np
 from netCDF4 import Dataset
+
 
 class Ncio(object):
     def __init__(self, param, grid, state):
@@ -11,6 +13,25 @@ class Ncio(object):
         # self.create_history_file(state, grid)
         self.kt = 0
         self.ktdiag = 0
+        # Create paths for the in- and output
+        datadir = os.path.expanduser(param.datadir)
+        expname = param.expname
+        out_dir = os.path.join(datadir, expname)
+        if param.filemode == "overwrite":
+            pass
+        else:
+            raise ValueError(f"{param.filemode} is not yet implemented")
+        hisname = f"{expname}_{param.myrank:02}_hist.nc"
+        self.hist_path = os.path.join(out_dir, hisname)
+        self.script_path = os.path.join(out_dir, f"{expname}.py")
+        self.output_directory = out_dir
+        # Create the output directory if necessary
+        if not os.path.isdir(self.output_directory):
+            if param.myrank == 0:
+                os.makedirs(self.output_directory)
+
+    def backup_scriptfile(self, filename):
+        shutil.copyfile(filename, self.script_path)
 
     def create_history_file(self, state, grid):
         self.gridvar = []
@@ -82,9 +103,11 @@ class Ncio(object):
                 self.createvar(nickname, dims, var["name"], var["unit"])
             if var["type"] == "vector":
                 dims = dims0 + ["yc", "xe"]
-                self.createvar(nickname+"x", dims, var["name"]+" x-component", var["unit"])
+                self.createvar(nickname+"x", dims,
+                               var["name"]+" x-component", var["unit"])
                 dims = dims0 + ["ye", "xc"]
-                self.createvar(nickname+"y", dims, var["name"]+" y-component", var["unit"])
+                self.createvar(nickname+"y", dims,
+                               var["name"]+" y-component", var["unit"])
 
         with Dataset(self.hist_path, "r+") as nc:
             nc.variables["xc"][:] = grid.xc
@@ -96,7 +119,7 @@ class Ncio(object):
         with Dataset(self.hist_path, "r+") as nc:
             for nickname in self.gridvar:
                 nc.variables[nickname][:] = state.get(nickname).view("i")
-            
+
     def createvar(self, nickname, dims, name, unit):
         with Dataset(self.hist_path, "r+", format='NETCDF4') as nc:
             v = nc.createVariable(nickname, float, tuple(dims))
@@ -119,4 +142,3 @@ class Ncio(object):
             for key, val in diags.items():
                 nc.variables[key][self.ktdiag] = val
         self.ktdiag += 1
-

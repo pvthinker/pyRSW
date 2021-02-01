@@ -73,6 +73,24 @@ numerics:
 #--------------------
 output:
 
+  expname:
+    default: myexp
+    doc: Name of the experiment; used in the name of the output directory and output files
+    avail: any valid filename (avoid white spaces)
+    type: str
+
+  datadir:
+    default: ~/data/pyRSW
+    avail: any valid path (existent or not) with write access
+    doc: Folder in which the output files of the simulation are stored
+    type: str
+
+  filemode:
+    default: overwrite
+    avail: overwrite, count, continue
+    doc: Handling of existing output files with the same name
+    type: str
+
   exacthistime:
     default: True
     doc: Adjust the time step so that history I/O is done at exact desired time

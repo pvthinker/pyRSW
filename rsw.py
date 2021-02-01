@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import signal
 import variables
 from bulk import Bulk
@@ -28,6 +29,7 @@ class RSW(object):
         self.param = param
         self.grid = grid
         self.shape = grid.shape
+        self.banner()
         self.state = variables.State(param, variables.modelvar)
         self.state.tracers = ["h"]  # <- TODO improve for the general case
         self.set_coriolis()
@@ -37,6 +39,10 @@ class RSW(object):
         self.t = 0.
 
         self.io = Ncio(param, grid, self.state)
+        if param.myrank == 0:
+            print(f"Creating output file: {self.io.hist_path}")
+            print(f"Backing up script to: {self.io.script_path}")
+            self.io.backup_scriptfile(sys.argv[0])
 
     def set_coriolis(self):
         f = self.state.f
@@ -85,6 +91,13 @@ class RSW(object):
 
         if self.param.plot_interactive:
             fig.finalize()
+        if self.param.myrank == 0:
+            print()
+            if self.ok:
+                print("Job is aborted")
+            else:
+                print("Job completed as expected")
+            print(f"Output written to: {self.io.hist_path}")
 
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
@@ -107,7 +120,8 @@ class RSW(object):
             operators.kinenergy(state, self.param)
 
         self.applybc(state.vor)
-        if self.param.noslip: self.applynoslip(state)
+        if self.param.noslip:
+            self.applynoslip(state)
         operators.montgomery(state, self.param)
 
     def diagnose_supplementary(self, state):
@@ -124,7 +138,7 @@ class RSW(object):
             v = state.uy.view("i")
             vor[..., 0] = v[..., 0]
             vor[..., -1] = -v[..., -1]
-            
+
     def applybc(self, scalar):
         ny, nx = self.shape
         # if self.param.geometry == "closed":
@@ -160,3 +174,19 @@ class RSW(object):
         if self.param.myrank == 0:
             print('\n hit ctrl-C, stopping', end='')
         self.ok = False
+
+    def banner(self):
+        logo = [
+            "              _____   _______          __",
+            "             |  __ \ / ____\ \        / /",
+            "  _ __  _   _| |__) | (___  \ \  /\  / / ",
+            " | '_ \| | | |  _  / \___ \  \ \/  \/ /  ",
+            " | |_) | |_| | | \ \ ____) |  \  /\  /   ",
+            " | .__/ \__, |_|  \_\_____/    \/  \/    ",
+            " | |     __/ |                           ",
+            " |_|    |___/                            ",
+            "                                         "]
+        if self.param.myrank == 0:
+            print("Welcome to")
+            for l in logo:
+                print(" "*10+l)
