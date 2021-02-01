@@ -107,11 +107,24 @@ class RSW(object):
             operators.kinenergy(state, self.param)
 
         self.applybc(state.vor)
+        if self.param.noslip: self.applynoslip(state)
         operators.montgomery(state, self.param)
 
     def diagnose_supplementary(self, state):
         operators.comppv(state)
 
+    def applynoslip(self, state):
+        if self.param.geometry == "closed":
+            vor = state.vor.view("j")
+            u = state.ux.view("j")
+            vor[..., 0] = -u[..., 0]
+            vor[..., -1] = -u[..., -1]
+
+            vor = state.vor.view("i")
+            v = state.uy.view("i")
+            vor[..., 0] = v[..., 0]
+            vor[..., -1] = -v[..., -1]
+            
     def applybc(self, scalar):
         ny, nx = self.shape
         # if self.param.geometry == "closed":
