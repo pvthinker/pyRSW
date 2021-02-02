@@ -175,9 +175,9 @@ plotting options:
     type: str
 
   cax:
-    default: (-1., 1.)
+    default: [-1., 1.]
     doc: min, max values for the colorrange
-    type: list    
+    type: list
 
   freq_plot:
     default: 1
