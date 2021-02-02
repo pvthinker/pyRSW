@@ -1,5 +1,6 @@
 import os
 import shutil
+import pickle
 import numpy as np
 from netCDF4 import Dataset
 
@@ -28,6 +29,11 @@ class Ncio(object):
         if not os.path.isdir(self.output_directory):
             if param.myrank == 0:
                 os.makedirs(self.output_directory)
+
+    def backup_paramfile(self):
+        self.paramfile = f"{self.output_directory}/param.pkl"
+        with open(self.paramfile,"wb") as fid:
+            pickle.dump(self.param, fid)
 
     def backup_scriptfile(self, filename):
         if self.param.myrank == 0:

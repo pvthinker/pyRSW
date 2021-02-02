@@ -33,8 +33,9 @@ class Figure(object):
         self.fig.canvas.draw()
         if param.generate_mp4:
             datadir = os.path.expanduser(param.datadir)
-            moviename = f"{datadir}/{param.expname}/movie_{param.plotvar}"
-            print(moviename)
+            expname = param.expname
+            moviename = f"{datadir}/{expname}/{expname}_{param.plotvar}"
+            print(f"generate: {moviename}.mp4")
             self.mov = Movie(self.fig, name=moviename)
         self.update(time)
 

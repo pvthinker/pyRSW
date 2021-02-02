@@ -38,17 +38,19 @@ class RSW(object):
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
 
-        self.io = Ncio(param, grid, self.state)
-        if param.myrank == 0:
-            print(f"Creating output file: {self.io.hist_path}")
-            print(f"Backing up script to: {self.io.script_path}")
-            self.io.backup_scriptfile(sys.argv[0])
-
     def set_coriolis(self):
         f = self.state.f
         f[:] = self.param.f0*self.grid.area
 
     def run(self):
+
+        self.io = Ncio(param, grid, self.state)
+        if param.myrank == 0:
+            print(f"Creating output file: {self.io.hist_path}")
+            print(f"Backing up script to: {self.io.script_path}")
+            self.io.backup_scriptfile(sys.argv[0])
+            self.io.backup_paramfile()
+
         self.ok = True
         kite = 0
         self.diagnose_var(self.state)
