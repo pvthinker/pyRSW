@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import matplotlib
 
 matplotlib.use('TkAgg')
@@ -31,7 +32,10 @@ class Figure(object):
         self.fig.show()
         self.fig.canvas.draw()
         if param.generate_mp4:
-            self.mov = Movie(self.fig)
+            datadir = os.path.expanduser(param.datadir)
+            moviename = f"{datadir}/{param.expname}/movie_{param.plotvar}"
+            print(moviename)
+            self.mov = Movie(self.fig, name=moviename)
         self.update(time)
 
     def update(self, time):

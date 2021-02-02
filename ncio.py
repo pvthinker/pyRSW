@@ -8,7 +8,6 @@ class Ncio(object):
     def __init__(self, param, grid, state):
         self.param = param
 
-        self.hist_path = 'history.nc'
         # topography is not yet defined when Ncio is called
         # self.create_history_file(state, grid)
         self.kt = 0
@@ -21,7 +20,7 @@ class Ncio(object):
             pass
         else:
             raise ValueError(f"{param.filemode} is not yet implemented")
-        hisname = f"{expname}_{param.myrank:02}_hist.nc"
+        hisname = f"history_{param.myrank:02}.nc"
         self.hist_path = os.path.join(out_dir, hisname)
         self.script_path = os.path.join(out_dir, f"{expname}.py")
         self.output_directory = out_dir
@@ -31,7 +30,8 @@ class Ncio(object):
                 os.makedirs(self.output_directory)
 
     def backup_scriptfile(self, filename):
-        shutil.copyfile(filename, self.script_path)
+        if self.param.myrank == 0:
+            shutil.copyfile(filename, self.script_path)
 
     def create_history_file(self, state, grid):
         self.gridvar = []

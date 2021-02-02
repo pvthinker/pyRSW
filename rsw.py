@@ -56,12 +56,12 @@ class RSW(object):
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        if self.param.plot_interactive:
-            fig = plotting.Figure(self.param, self.state, self.t)
-
         self.io.create_history_file(self.state, self.grid)
         self.io.dohis(self.state, self.t)
         nexthistime = self.t + self.param.freq_his
+
+        if self.param.plot_interactive:
+            fig = plotting.Figure(self.param, self.state, self.t)
 
         while self.ok:
             self.dt = self.compute_dt()
