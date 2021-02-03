@@ -44,8 +44,8 @@ class RSW(object):
 
     def run(self):
 
-        self.io = Ncio(param, grid, self.state)
-        if param.myrank == 0:
+        self.io = Ncio(self.param, self.grid, self.state)
+        if self.param.myrank == 0:
             print(f"Creating output file: {self.io.hist_path}")
             print(f"Backing up script to: {self.io.script_path}")
             self.io.backup_scriptfile(sys.argv[0])
@@ -58,12 +58,12 @@ class RSW(object):
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        self.io.create_history_file(self.state, self.grid)
+        self.io.create_history_file(self.state)
         self.io.dohis(self.state, self.t)
         nexthistime = self.t + self.param.freq_his
 
         if self.param.plot_interactive:
-            fig = plotting.Figure(self.param, self.state, self.t)
+            fig = plotting.Figure(self.param, self.grid, self.state, self.t)
 
         while self.ok:
             self.dt = self.compute_dt()
@@ -79,7 +79,7 @@ class RSW(object):
                 if self.param.plotvar == "pv":
                     self.diagnose_supplementary(self.state)
 
-                fig.update(self.t)
+                fig.update(self.t, self.state)
 
             self.bulk.compute(self.state)
 

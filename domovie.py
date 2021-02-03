@@ -8,7 +8,7 @@ import plotting
 
 def domovie(expdir, varname, extraparam={}):
     """Generate a movie from a history file
-    
+
     Parameters
     ----------
     expdir: str, the experiment path
@@ -18,12 +18,12 @@ def domovie(expdir, varname, extraparam={}):
     extraparam: dict, plotting parameters. By default, it uses the
     parameters saved in the param.pkl file
 
-    
+
     Example
     -------
     >>> domovie("/home/roullet/data/pyRSW/myexp2", "vor", {"colorscheme": "imposed", "cax": [-0.005, 0.008]})
     """
-    
+
     paramfile = f"{expdir}/param.pkl"
     with open(paramfile, "rb") as fid:
         param = pickle.load(fid)
@@ -40,18 +40,18 @@ def domovie(expdir, varname, extraparam={}):
     hisfile = f"{expdir}/history_00.nc"
     with Dataset(hisfile) as nc:
         nt = len(nc.dimensions["t"])
-        
+
         data = model.state.get(varname).view("i")
-        
+
         kt = 0
         data[:] = nc.variables[varname][kt]
         time = nc.variables["t"][kt]
-        fig = plotting.Figure(param, model.state, time)
-        
+        fig = plotting.Figure(param, grid, model.state, time)
+
         for kt in range(1, nt):
             data[:] = nc.variables[varname][kt]
             time = nc.variables["t"][kt]
             print(f"\rkt={kt}  t={time:.2}", end="")
-            fig.update(time)
+            fig.update(time, model.state)
 
         fig.finalize()

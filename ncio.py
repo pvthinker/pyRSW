@@ -8,7 +8,7 @@ from netCDF4 import Dataset
 class Ncio(object):
     def __init__(self, param, grid, state):
         self.param = param
-
+        self.grid = grid
         # topography is not yet defined when Ncio is called
         # self.create_history_file(state, grid)
         self.kt = 0
@@ -39,7 +39,7 @@ class Ncio(object):
         if self.param.myrank == 0:
             shutil.copyfile(filename, self.script_path)
 
-    def create_history_file(self, state, grid):
+    def create_history_file(self, state):
         self.gridvar = []
         for nickname in state.variables:
             if state.variables[nickname]["constant"]:
@@ -56,8 +56,8 @@ class Ncio(object):
                     attrs[key] = str(attrs[key])
             nc.setncatts(attrs)
 
-            nx = len(grid.xc)
-            ny = len(grid.yc)
+            nx = len(self.grid.xc)
+            ny = len(self.grid.yc)
             # Create the dimensions
             nc.createDimension("t", None)  # unlimited size
             nc.createDimension("tdiag", None)  # unlimited size
@@ -116,15 +116,17 @@ class Ncio(object):
                                var["name"]+" y-component", var["unit"])
 
         with Dataset(self.hist_path, "r+") as nc:
-            nc.variables["xc"][:] = grid.xc
-            nc.variables["yc"][:] = grid.yc
-            nc.variables["xe"][:] = grid.xe
-            nc.variables["ye"][:] = grid.ye
+            nc.variables["xc"][:] = self.grid.xc
+            nc.variables["yc"][:] = self.grid.yc
+            nc.variables["xe"][:] = self.grid.xe
+            nc.variables["ye"][:] = self.grid.ye
 
         # plot constant variables (relative to grid properties: coriolis and bathymetry)
         with Dataset(self.hist_path, "r+") as nc:
             for nickname in self.gridvar:
-                nc.variables[nickname][:] = state.get(nickname).view("i")
+                data = state.get(nickname).getproperunits(self.grid)
+                #print(data)
+                nc.variables[nickname][:] = data
 
     def createvar(self, nickname, dims, name, unit):
         with Dataset(self.hist_path, "r+", format='NETCDF4') as nc:
@@ -139,7 +141,9 @@ class Ncio(object):
             nc.variables['n'][self.kt] = self.kt
             nc.variables['t'][self.kt] = time
             for nickname in self.hisvar:
-                nc.variables[nickname][self.kt] = state.get(nickname).view("i")
+                data = state.get(nickname).getproperunits(self.grid)
+                #print(nickname, data)
+                nc.variables[nickname][self.kt] = data
         self.kt += 1
 
     def dodiag(self, diags, time):
@@ -148,3 +152,4 @@ class Ncio(object):
             for key, val in diags.items():
                 nc.variables[key][self.ktdiag] = val
         self.ktdiag += 1
+

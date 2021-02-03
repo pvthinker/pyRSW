@@ -11,19 +11,20 @@ from movietools import Movie
 plt.ion()
 
 class Figure(object):
-    def __init__(self, param, state, time):
+    def __init__(self, param, grid, state, time):
         self.param = param
+        self.grid = grid
         Lx, Ly = param.Lx, param.Ly
         self.plotvar = param.plotvar
-        self.var = state.get(self.plotvar)
-        z2d = self.var.view("i")[-1]
+        var = state.get(self.plotvar)
+        z2d = var.getproperunits(self.grid)[-1]
 
         self.fig = plt.figure(figsize=(12, 12))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
         self.im = self.ax1.imshow(z2d, extent=[0, Lx, 0, Ly], cmap='RdBu_r',
                                   interpolation='nearest', origin='lower')
         plt.colorbar(self.im)
-        self.ax1.set_title('%s / t=%.2f' % (self.var.name, time))
+        self.ax1.set_title('%s / t=%.2f' % (var.name, time))
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
         self.ax1.text(0.02*Lx, 0.95*Ly, 'Rd=%.2f' % (np.sqrt(param.g*param.H)/param.f0))
@@ -37,10 +38,11 @@ class Figure(object):
             moviename = f"{datadir}/{expname}/{expname}_{param.plotvar}"
             print(f"generate: {moviename}.mp4")
             self.mov = Movie(self.fig, name=moviename)
-        self.update(time)
+        self.update(time, state)
 
-    def update(self, time):
-        z2d = self.var.view("i")[-1]
+    def update(self, time, state):
+        var = state.get(self.plotvar)
+        z2d = var.getproperunits(self.grid)[-1]
         self.im.set_array(z2d)
         if self.param.colorscheme == 'imposed':
             vmin, vmax = self.param.cax

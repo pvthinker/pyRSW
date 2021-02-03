@@ -50,6 +50,7 @@ class Grid(object):
         self.idy2 = 1 / self.dy**2
 
         self.area = self.dx * self.dy
+        self.iarea = 1/self.area
 
         # Define coordinates
         #  coordinates of the bottom left front corner of the subdomain

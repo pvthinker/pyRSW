@@ -162,7 +162,7 @@ class Vector(object):
         for key, dim in zip("ji", "yx"):
             name = f"{self.name} - {dim} component"
             varcopy["name"] = name
-            vector[key] = Scalar(nickname, varcopy, param, stagg=dim)
+            vector[key] = Scalar(nickname+dim, varcopy, param, stagg=dim)
         setattr(self, nickname, vector)
 
     def __repr__(self):
@@ -185,6 +185,7 @@ class Vector(object):
 
 class Scalar(object):
     def __init__(self, nickname, var, param, stagg=""):
+        self.param = param
         self.nickname = nickname
         #self.type = var["type"]
         self.name = var["name"]
@@ -282,6 +283,22 @@ class Scalar(object):
         """Return view in the same convention as scalar."""
         return self.view(scalar.activeview)
         
+    def getproperunits(self, grid):
+        if self.param.physicalunits:
+            if self.nickname == "h":
+                return self.view("i")
+
+            if self.nickname == "ux":
+                return self.view("i")*grid.idx
+
+            if self.nickname == "uy":
+                return self.view("i")*grid.idy
+
+            if self.nickname in ["f", "vor", "pv"]:
+                return self.view("i")*grid.iarea
+
+        else:
+            return self.view("i")
 
 if __name__ == "__main__":
     param = {"nz": 2, "ny": 256, "nx": 256, "nh": 2}

@@ -91,6 +91,11 @@ output:
     doc: Handling of existing output files with the same name
     type: str
 
+  physicalunits:
+    default: True
+    doc: Transform model native units into physical units
+    type: bool
+
   exacthistime:
     default: True
     doc: Adjust the time step so that history I/O is done at exact desired time
