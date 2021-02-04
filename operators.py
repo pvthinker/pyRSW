@@ -45,22 +45,22 @@ def kinenergy(state, param):
     fd.compke(v, V, ke, 1)
 
 
-# def montgomery(state, param):
-#     rho0, rho1 = param["rho"]
-#     g = param["g"]
-#     h = state.h.view("i")
-#     hb = state.hb.view("i")
-#     p = state.p.view("i")
-
-#     fd.montgomery(h, hb, p, rho0, rho1, g)
-
 def montgomery(state, param):
-    #rho0 = param["rho"]
+    rho = param["rho"]
     g = param["g"]
     h = state.h.view("i")
     hb = state.hb.view("i")
     p = state.p.view("i")
-    p[:] = g*(h+hb)
+
+    fd.montgomery(h, hb, p, rho, g)
+
+# def montgomery(state, param):
+#     #rho0 = param["rho"]
+#     g = param["g"]
+#     h = state.h.view("i")
+#     hb = state.hb.view("i")
+#     p = state.p.view("i")
+#     p[:] = g*(h+hb)
 
 
 def vortex_force(state, dstate, param):

@@ -146,27 +146,28 @@ def compile(verbose=False):
                         ke0 = ke1
 
     @cc.export("montgomery",
-               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8, f8, f8)")
-    def montgomery(h, hb, p, rho0, rho1, g):
+               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:], f8)")
+    def montgomery(h, hb, p, rho, g):
         shape = h.shape
+        nz = shape[0]
+        assert rho.shape[0] == nz
 
-        cff0 = rho1*g
-        cff1 = rho0*g
-        for k in range(shape[0]):
+        for k in range(nz):
+            # first pass on all levels with contribution
+            # from the bottom layer and the topography
+            cff = g*rho[k]
             for j in range(shape[1]):
                 for i in range(shape[2]):
-                    p0 = cff1*h[1, j, i]
-                    p[k, j, i] = p0
+                    p[k, j, i] = cff*(hb[j, i]+h[0, j, i])
 
-        for k in range(shape[0]):
-            if k == 0:
-                cff = cff0
-            else:
-                cff = cff1
-            for j in range(shape[1]):
-                for i in range(shape[2]):
-                    z = hb[j, i]+h[0, j, i]
-                    p[k, j, i] = cff*z
+        # add overlaying layers contribution
+        # the one layer case never enters this loop
+        for l in range(1, nz):
+            for k in range(nz):
+                cff = g*min(rho[k], rho[l])
+                for j in range(shape[1]):
+                    for i in range(shape[2]):
+                        p[k, j, i] += cff*h[l, j, i]
 
     @cc.export("vortex_force",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], i4)")

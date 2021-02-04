@@ -32,11 +32,22 @@ class RSW(object):
         self.banner()
         self.state = variables.State(param, variables.modelvar)
         self.state.tracers = ["h"]  # <- TODO improve for the general case
+        self.fix_density()
         self.set_coriolis()
         self.bulk = Bulk(param)
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
+
+    def fix_density(self):
+        """ Transform param.rho into a numpy array
+        for use in the montgomery computation"""
+        if self.param.nz == 1:
+            assert isinstance(self.param.rho, float)
+            self.param.rho = np.asarray([self.param.rho])
+        else:
+            assert len(self.param.rho) == self.param.nz
+            self.param.rho = np.asarray(self.param.rho)
 
     def set_coriolis(self):
         f = self.state.f
