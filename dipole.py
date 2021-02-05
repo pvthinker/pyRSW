@@ -14,16 +14,17 @@ from rsw import RSW
 
 param = Param()
 
+param.expname = "dipole"
 param.nz = 1
-param.ny = 64*2
-param.nx = 64*2
-param.Lx = 1.
+param.ny = 64
+param.nx = 128
+param.Lx = 2.
 param.Ly = 1.
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.25
-param.dt = 1e-2/4
-param.tend = 6
+param.dt = 1e-2/2
+param.tend = 8
 param.plotvar = "vor"
 param.freq_plot = 8
 param.freq_his = 0.1
@@ -33,8 +34,9 @@ param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = True
 param.linear = False
 param.timestepping = "RK3_SSP"
-param.f0 = 1.
+param.f0 = 5.
 param.noslip = True
+param.var_to_save = ["h", "vor", "pv"]
 
 grid = Grid(param)
 
@@ -44,7 +46,7 @@ xc, yc = grid.xc, grid.yc
 xe, ye = grid.xe, grid.ye
 
 h = model.state.h
-hb = model.state.hb
+hb = grid.arrays.hb
 u = model.state.ux
 v = model.state.uy
 
@@ -57,9 +59,10 @@ f = param.f0
 d = 0.07  # vortex radius
 dsep = d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.05
-hmin = 1e-3
-x0 = 0.5
+amp = -0.3
+
+x0 = param.Lx/2
+y0 = param.Ly/2
 
 def vortex(x1, y1, x0, y0, d):
     xx, yy = np.meshgrid(x1, y1)
@@ -67,12 +70,9 @@ def vortex(x1, y1, x0, y0, d):
     return np.exp(-d2/(2*d**2))
 
 
-
 h[0] = h0
-#h[0] += amp*dambreak(xc, yc, 0.5, 0.5-dsep, d)
-h[0] -= amp*vortex(xc, yc, x0, 0.5-dsep, d)
-h[0] += amp*vortex(xc, yc, x0, 0.5+dsep, d)
-#h[0] = np.maximum(hmin, h[0])
+h[0] -= amp*vortex(xc, yc, x0-dsep, y0, d)
+h[0] += amp*vortex(xc, yc, x0+dsep, y0, d)
 
 
 # to set initial geostropic adjustement
@@ -83,9 +83,8 @@ h[0] += amp*vortex(xc, yc, x0, 0.5+dsep, d)
 hF = model.state.vor
 hF[0] = h0
 #hF[0] += amp*dambreak(xe, ye, 0.5, 0.5-dsep, d)
-hF[0] -= amp*vortex(xe, ye, x0, 0.5-dsep, d)
-hF[0] += amp*vortex(xe, ye, x0, 0.5+dsep, d)
-#hF[0] = np.maximum(hmin, hF[0])
+hF[0] -= amp*vortex(xe, ye, x0-dsep, y0, d)
+hF[0] += amp*vortex(xe, ye, x0+dsep, y0, d)
 
 
 def grad(phi, dphidx, dphidy):

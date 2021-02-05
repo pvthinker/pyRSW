@@ -33,7 +33,7 @@ class RSW(object):
         self.state = variables.State(param, variables.modelvar)
         self.state.tracers = ["h"]  # <- TODO improve for the general case
         self.fix_density()
-        self.set_coriolis()
+        # self.set_coriolis()
         self.bulk = Bulk(param)
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
@@ -49,20 +49,16 @@ class RSW(object):
             assert len(self.param.rho) == self.param.nz
             self.param.rho = np.asarray(self.param.rho)
 
-    def set_coriolis(self):
-        f = self.state.f
-        f[:] = self.param.f0*self.grid.area
-
     def run(self):
 
         self.io = Ncio(self.param, self.grid, self.state)
+
         if self.param.myrank == 0:
             print(f"Creating output file: {self.io.hist_path}")
             print(f"Backing up script to: {self.io.script_path}")
             self.io.backup_scriptfile(sys.argv[0])
             self.io.backup_paramfile()
 
-        self.ok = True
         kite = 0
         self.diagnose_var(self.state)
         self.diagnose_supplementary(self.state)
@@ -76,11 +72,14 @@ class RSW(object):
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.grid, self.state, self.t)
 
+        tend = self.param.tend
+        self.ok = self.t < tend
+
         while self.ok:
             self.dt = self.compute_dt()
             self.timescheme.forward(self.state, self.t, self.dt)
 
-            if self.t >= self.param.tend:
+            if self.t >= tend:
                 self.ok = False
             else:
                 self.t += self.dt
@@ -99,7 +98,7 @@ class RSW(object):
                 self.io.dohis(self.state, self.t)
                 nexthistime += self.param.freq_his
 
-            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} nexthis={nexthistime:.2f}"
+            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} his={nexthistime:.2f}/{tend:.2f}"
             print(time_string, end="")
 
         if self.param.plot_interactive:
@@ -117,7 +116,7 @@ class RSW(object):
         # transport the tracers
         tracer.rhstrac(state, dstate, self.param, last=last)
         # vortex force
-        operators.vortex_force(state, dstate, self.param)
+        operators.vortex_force(state, dstate, self.grid.arrays.f, self.param)
         # bernoulli
         operators.bernoulli(state, dstate, self.param)
 
@@ -130,15 +129,16 @@ class RSW(object):
         state.vor[:] = 0.
         if not self.param.linear:
             operators.vorticity(state)
+
             operators.kinenergy(state, self.param)
 
         self.applybc(state.vor)
         if self.param.noslip:
             self.applynoslip(state)
-        operators.montgomery(state, self.param)
+        operators.montgomery(state, self.grid.arrays.hb, self.param)
 
     def diagnose_supplementary(self, state):
-        operators.comppv(state)
+        operators.comppv(state, self.grid.arrays.f)
 
     def applynoslip(self, state):
         if self.param.geometry == "closed":

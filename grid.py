@@ -5,7 +5,32 @@
 import numpy as np
 from variables import Scalar
 import topology as topo
+import variables
 
+gridvar = {
+    "hb": {
+        "type": "scalar",
+        "name": "total depth",
+        "dimensions": ["y", "x"],
+        "unit": "L",
+        "constant": True,
+        "prognostic": False},
+    "f": {
+        "type": "vorticity",
+        "name": "coriolis",
+        "dimensions": ["y", "x"],
+        "unit": "L^2.T^-1",
+        "constant": True,
+        "prognostic": False},
+    "msk": {
+        "type": "scalar",
+        "dtype": "b",  # 'b' is int8
+        "name": "land mask",
+        "dimensions": ["y", "x"],
+        "unit": "1",
+        "constant": True,
+        "prognostic": False}
+    }
 
 def set_domain_decomposition(param):
     topo.topology = param["geometry"]
@@ -24,6 +49,7 @@ class Grid(object):
 
         set_domain_decomposition(param)
 
+        self.arrays = variables.State(param, gridvar)
         # Copy needed parameters
         self.nx = param["nx"]
         self.ny = param["ny"]
@@ -34,6 +60,8 @@ class Grid(object):
 
         self.Lx = param["Lx"]
         self.Ly = param["Ly"]
+
+        self.f0 = param["f0"]
 
         # grid space
         self.dx = self.Lx / (self.npx*self.nx)
@@ -72,6 +100,12 @@ class Grid(object):
         j0, j1, i0, i1 = dummy.domainindices
         self.xe = (np.arange(nx+1)-i0)*self.dx+x0
         self.ye = (np.arange(ny+1)-j0)*self.dy+y0
+
+        self.set_coriolis()
+
+    def set_coriolis(self):
+        f = self.arrays.f
+        f[:] = self.f0*self.area
 
     def sum(self, array3d):
         """ compute the global domain sum of array3d

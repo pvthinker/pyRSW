@@ -10,21 +10,21 @@ from rsw import RSW
 param = Param()
 
 param.nz = 1
-param.ny = 128
-param.nx = 128
+param.ny = 64
+param.nx = 64
 param.Lx = 1.
 param.Ly = 1.
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.25
-param.dt = 1e-2/2
-param.tend = 10.
+param.dt = 1e-2*0.8
+param.tend = 25
 param.plotvar = "vor"
 param.freq_plot = 8
-param.freq_his = 0.5
-param.plot_interactive = True
-param.colorscheme = "imposed"
-param.cax = np.asarray([-2e-4, 12e-4])
+param.freq_his = 0.25
+param.plot_interactive = False
+param.colorscheme = "auto"
+param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = True
 param.linear = False
 param.timestepping = "RK3_SSP"
@@ -38,7 +38,7 @@ xc, yc = grid.xc, grid.yc
 xe, ye = grid.xe, grid.ye
 
 h = model.state.h
-hb = model.state.hb
+hb = grid.arrays.hb
 u = model.state.ux
 v = model.state.uy
 
@@ -48,10 +48,10 @@ f = param.f0
 
 # setup initial conditions
 
-d = 0.1  # vortex radius
-dsep = d*1.1  # half distance between the two vortices
+d = 0.07  # vortex radius
+dsep = d*2  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.5
+amp = -0.3
 hmin = 1e-3
 x0 = 0.5
 
@@ -60,19 +60,13 @@ def vortex(x1, y1, x0, y0, d):
     d2 = (xx-x0)**2 + (yy-y0)**2
     return np.exp(-d2/(2*d**2))
 
-def dambreak(x1, y1, x0, y0, sigma,slope=0.):
-    xx, yy = np.meshgrid(x1, y1)
-    return np.tanh((slope*(xx-x0)-(yy-y0))/sigma)
-
 
 h[0] = h0
-#h[0] += amp*dambreak(xc, yc, 0.5, 0.5-dsep, d)
 h[0] += amp*vortex(xc, yc, x0, 0.5-dsep, d)
 h[0] += amp*vortex(xc, yc, x0, 0.5+dsep, d)
-#h[0] = np.maximum(hmin, h[0])
 
 # topography
-hb[:] = 0.4*vortex(xc, yc, x0+dsep, 0.5, d)
+#hb[:] = 0.4*vortex(xc, yc, x0+dsep, 0.5, d)
 
 
 # to set initial geostropic adjustement
@@ -99,8 +93,8 @@ def grad(phi, dphidx, dphidy):
 u[:] = 0.
 v[:] = 0.
 # then take the rotated gradient of it
-grad(hF, v, u)
-u[:] *= -(g/f)
-v[:] *= +(g/f)
+# grad(hF, v, u)
+# u[:] *= -(g/f)
+# v[:] *= +(g/f)
 hF[:] = 0.
 model.run()

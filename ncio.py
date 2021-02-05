@@ -93,7 +93,12 @@ class Ncio(object):
 
         self.hisvar = []
         for nickname in self.param.var_to_save+self.gridvar:
-            var = state.variables[nickname]
+            if nickname in state.variables:
+                var = state.variables[nickname]
+            elif nickname in self.grid.arrays.variables:
+                var= self.grid.arrays.variables[nickname]
+            else:
+                raise ValueError
             # Spatial dimensions are in reversed order, because
             # the arrays are stored like this in the Scalar class
             dims0 = []
@@ -124,7 +129,8 @@ class Ncio(object):
         # plot constant variables (relative to grid properties: coriolis and bathymetry)
         with Dataset(self.hist_path, "r+") as nc:
             for nickname in self.gridvar:
-                data = state.get(nickname).getproperunits(self.grid)
+                var= self.grid.arrays.variables[nickname]
+                data = var.getproperunits(self.grid)
                 #print(data)
                 nc.variables[nickname][:] = data
 

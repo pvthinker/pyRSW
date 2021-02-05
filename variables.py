@@ -8,20 +8,6 @@ modelvar = {
         "unit": "L",
         "constant": False,
         "prognostic": True},
-    "hb": {
-        "type": "scalar",
-        "name": "total depth",
-        "dimensions": ["y", "x"],
-        "unit": "L",
-        "constant": True,
-        "prognostic": False},
-    "f": {
-        "type": "vorticity",
-        "name": "coriolis",
-        "dimensions": ["y", "x"],
-        "unit": "L^2.T^-1",
-        "constant": True,
-        "prognostic": False},
     "u": {
         "type": "vector",
         "name": "covariant velocity",
@@ -193,6 +179,10 @@ class Scalar(object):
         self.prognostic = var["prognostic"]
         self.dimensions = var["dimensions"]
         self.ndim = len(self.dimensions)
+        if "dtype" in var:
+            self.dtype = var["dtype"]
+        else:
+            self.dtype = "d"  # default type for arrays is float8
 
         nh = param["nh"]
         neighbours = param["neighbours"]
@@ -234,8 +224,8 @@ class Scalar(object):
         self.shape = tuple(shape)
 
         self.data = {
-            "i": np.zeros(self.shape),
-            "j": np.zeros(alt_shape)}
+            "i": np.zeros(self.shape, dtype=self.dtype),
+            "j": np.zeros(alt_shape, dtype=self.dtype)}
         self.activeview = "i"
 
     def __repr__(self):
