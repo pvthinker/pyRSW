@@ -6,6 +6,13 @@ import numpy as np
 from variables import Scalar
 import topology as topo
 import variables
+try:
+    import mindexing
+except:
+    import mask_stencils as ms
+    ms.compile()
+    import mindexing
+from numba import jit
 
 gridvar = {
     "hb": {
@@ -30,7 +37,20 @@ gridvar = {
         "unit": "1",
         "constant": True,
         "prognostic": False}
-    }
+}
+
+for var in "tv":
+    for sense in "p":
+        nickname = f"{var}{sense}order"
+        gridvar[nickname] = {
+            "type": "vector",
+            "dtype": "b",  # 'b' is int8
+            "name": nickname,
+            "dimensions": ["y", "x"],
+            "unit": "1",
+            "constant": True,
+            "prognostic": False}
+
 
 def set_domain_decomposition(param):
     topo.topology = param["geometry"]
@@ -50,6 +70,10 @@ class Grid(object):
         set_domain_decomposition(param)
 
         self.arrays = variables.State(param, gridvar)
+        # set msk to 1
+        msk = self.arrays.msk.view("i")
+        msk[:] = 1
+
         # Copy needed parameters
         self.nx = param["nx"]
         self.ny = param["ny"]
@@ -126,3 +150,151 @@ class Grid(object):
         v = state.uy.view("i")
         U[:] = u * self.idx2
         V[:] = v * self.idy2
+
+    def finalize(self):
+        """ compute the order of upwind discretizations
+        depending on the proximity to solid boundaries
+        """
+        msk = self.arrays.msk.view("i")
+        txporder = self.arrays.tporderx.view("i")
+        vyporder = self.arrays.vpordery.view("i")
+        index_tracerflux(msk, txporder, 1)
+        index_vortexforce(msk, vyporder, 1)
+        # txporder = np.minimum(txporder, 1)
+        # vyporder = np.minimum(vyporder, 1)
+        # txmorder = self.arrays.tmorderx.view("i")
+        # index_tracerflux(msk, txmorder, 0)
+
+        msk = self.arrays.msk.view("j")
+        typorder = self.arrays.tpordery.view("j")
+        vxporder = self.arrays.vporderx.view("j")
+        index_tracerflux(msk, typorder, 1)
+        index_vortexforce(msk, vxporder, 1)
+        # typorder = np.minimum(typorder, 1)
+        # vxporder = np.minimum(vxporder, 1)
+        # tymorder = self.arrays.tmordery.view("j")
+        # index_tracerflux(msk, tymorder, 0)
+
+
+@jit
+def index_tracerflux(msk, order, sign):
+    """
+    Determine the order for the biased interpolation
+    of tracer along direction x at U point
+
+    sign:
+      - 1 for left-biased
+      - 0 for right biased
+    """
+    ny, nx = msk.shape
+    assert order.shape == (ny, nx+1)
+    for j in range(ny):
+        m = msk[j]
+        for i1 in range(nx+1):
+            i = i1-sign
+            if (i >= 0) and (i < nx):
+                m1 = m[i]
+            else:
+                m1 = 0
+            if (i >= 1) and (i < nx-1):
+                m3 = m[i-1]+m[i]+m[i+1]
+            else:
+                m3 = 0
+            if (i >= 2) and (i < nx-2):
+                m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
+            else:
+                m5 = 0
+
+            if m5 == 5:
+                order[j, i1] = 5
+            elif m3 == 3:
+                order[j, i1] = 3
+            elif m1 == 1:
+                order[j, i1] = 1
+            else:
+                order[j, i1] = 0
+
+
+# @jit
+# def index_mtracerflux(msk, order):
+#     ny, nx = msk.shape
+#     assert order.shape == (ny, nx+1)
+#     for j in range(ny):
+#         m = msk[j]
+#         for i in range(nx+1):
+#             if (i >= 0) and (i < nx):
+#                 m1 = m[i]
+#             else:
+#                 m1 = 0
+#             if (i >= 1) and (i < nx-1):
+#                 m3 = m[i-1]+m[i]+m[i-1]
+#             else:
+#                 m3 = 0
+#             if (i >= 2) and (i < nx-2):
+#                 m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
+#             else:
+#                 m5 = 0
+
+#             if m5 == 5:
+#                 order[j, i] = 5
+#             elif m3 == 3:
+#                 order[j, i] = 3
+#             elif m1 == 1:
+#                 order[j, i] = 1
+#             else:
+#                 order[j, i] = 0
+
+
+@jit
+def index_vortexforce(mskc, order, sign):
+    """
+    Determine the order for the biased interpolation
+    of vorticity along direction x at V point
+
+    mskc: [ny, nx] msk at centers
+    order: [ny+1, nx] order at V point
+    sign:
+      - 1 for left-biased
+      - 0 for right biased
+
+    mskv: msk at corners
+    msk: [ny+1, nx+1] msk to be used to determine the order
+
+    """
+    ny, nx = mskc.shape
+    assert order.shape == (ny+1, nx)
+    # derive the mask at vorticity point
+    mskv = np.zeros((ny+1, nx+1), dtype=mskc.dtype)
+    for j in range(ny):
+        for i in range(nx):
+            if mskc[j, i] == 1:
+                mskv[j+1, i+1] = 1
+                mskv[j+1, i] = 1
+                mskv[j, i+1] = 1
+                mskv[j, i] = 1
+
+    for j in range(1, ny):
+        m = mskv[j]
+        for i1 in range(nx):
+            i = i1-sign
+            if (i >= 1) and (i < nx+1):
+                m1 = m[i-1]
+            else:
+                m1 = 0
+            if (i >= 2) and (i < nx):
+                m3 = m[i-2]+m[i-1]+m[i]
+            else:
+                m3 = 0
+            if (i >= 3) and (i < nx-1):
+                m5 = m[i-3]+m[i-2]+m[i-1]+m[i]+m[i+1]
+            else:
+                m5 = 0
+
+            if m5 == 5:
+                order[j, i1] = 5
+            elif m3 == 3:
+                order[j, i1] = 3
+            elif m1 == 1:
+                order[j, i1] = 1
+            else:
+                order[j, i1] = 0

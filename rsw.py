@@ -114,11 +114,11 @@ class RSW(object):
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
         # transport the tracers
-        tracer.rhstrac(state, dstate, self.param, last=last)
+        tracer.rhstrac(state, dstate, self.param, self.grid, last=last)
         # vortex force
-        operators.vortex_force(state, dstate, self.grid.arrays.f, self.param)
+        operators.vortex_force(state, dstate, self.param, self.grid)
         # bernoulli
-        operators.bernoulli(state, dstate, self.param)
+        operators.bernoulli(state, dstate, self.param, self.grid)
 
     def diagnose_var(self, state):
         self.applybc(state.h)
@@ -128,7 +128,7 @@ class RSW(object):
 
         state.vor[:] = 0.
         if not self.param.linear:
-            operators.vorticity(state)
+            operators.vorticity(state, self.grid)
 
             operators.kinenergy(state, self.param)
 

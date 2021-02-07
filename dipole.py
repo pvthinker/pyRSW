@@ -34,16 +34,28 @@ param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = True
 param.linear = False
 param.timestepping = "RK3_SSP"
-param.f0 = 5.
-param.noslip = True
-param.var_to_save = ["h", "vor", "pv"]
+param.f0 = 0.
+param.noslip = False
+param.var_to_save = ["h", "vor", "pv", "u"]
+
+def vortex(x1, y1, x0, y0, d):
+    xx, yy = np.meshgrid(x1, y1)
+    d2 = (xx-x0)**2 + (yy-y0)**2
+    return np.exp(-d2/(2*d**2))
 
 grid = Grid(param)
 
-model = RSW(param, grid)
-
 xc, yc = grid.xc, grid.yc
 xe, ye = grid.xe, grid.ye
+
+msk = grid.arrays.msk.view("i")
+ny, nx = param.ny, param.nx
+m = vortex((xc-param.Lx/2)*.5, yc, 0., param.Ly/2, param.Lx/2)
+msk[:] = np.asarray(m>m[3,param.nx//2], dtype="b")
+grid.finalize()
+
+model = RSW(param, grid)
+
 
 h = model.state.h
 hb = grid.arrays.hb
@@ -59,15 +71,10 @@ f = param.f0
 d = 0.07  # vortex radius
 dsep = d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.3
+amp = -0.3e-3
 
 x0 = param.Lx/2
 y0 = param.Ly/2
-
-def vortex(x1, y1, x0, y0, d):
-    xx, yy = np.meshgrid(x1, y1)
-    d2 = (xx-x0)**2 + (yy-y0)**2
-    return np.exp(-d2/(2*d**2))
 
 
 h[0] = h0
@@ -98,8 +105,8 @@ def grad(phi, dphidx, dphidy):
 u[:] = 0.
 v[:] = 0.
 # then take the rotated gradient of it
-grad(hF, v, u)
-u[:] *= -(g/f)
-v[:] *= +(g/f)
+# grad(hF, v, u)
+# u[:] *= -(g/f)
+# v[:] *= +(g/f)
 hF[:] = 0.
 model.run()

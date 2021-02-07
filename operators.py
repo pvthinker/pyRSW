@@ -17,16 +17,18 @@ def comppv_c(state):
     fd.comppv_c(vor, f, h, pv)
 
 
-def vorticity(state):
+def vorticity(state, grid):
     # + dv/dx
     v = state.uy.view("i")
     vor = state.vor.view("i")
-    fd.curl(v, vor, 1)
+    msk = grid.arrays.msk.view("i")
+    fd.curl(v, vor, msk, 1)
 
     # - du/dy
     u = state.ux.view("j")
     vor = state.vor.view("j")
-    fd.curl(u, vor, -1)
+    msk = grid.arrays.msk.view("j")
+    fd.curl(u, vor, msk, -1)
 
 
 def kinenergy(state, param):
@@ -63,29 +65,33 @@ def montgomery(state, hb, param):
 #     p[:] = g*(h+hb)
 
 
-def vortex_force(state, dstate, f, param):
+def vortex_force(state, dstate, param, grid):
     du = dstate.u["i"].view("j")
     V = state.U["j"].view("j")
     vor = state.vor.view("j")
-    farray = f.view("j")
+    f = grid.arrays.f.view("j")
     # du/dt += (vor+f) * V
-    fd.vortex_force(V, farray, vor, du, +1)
+    order = grid.arrays.vpordery.view("j")
+    fd.vortex_force(V, f, vor, du, order, +1)
 
     dv = dstate.u["j"].view("i")
     U = state.U["i"].view("i")
     vor = state.vor.view("i")
-    farray = f.view("i")
+    f = grid.arrays.f.view("i")
     # dv/dt -= (vor+f) * U
-    fd.vortex_force(U, farray, vor, dv, -1)
+    order = grid.arrays.vporderx.view("i")
+    fd.vortex_force(U, f, vor, dv, order, -1)
 
 
-def bernoulli(state, dstate, param):
+def bernoulli(state, dstate, param, grid):
     du = dstate.u["i"].view("i")
     p = state.p.view("i")
     ke = state.ke.view("i")
-    fd.bernoulli(ke, p, du, param.linear)
+    msk = grid.arrays.msk.view("i")
+    fd.bernoulli(ke, p, du, msk, param.linear)
 
     dv = dstate.u["j"].view("j")
     p = state.p.view("j")
     ke = state.ke.view("j")
-    fd.bernoulli(ke, p, dv,  param.linear)
+    msk = grid.arrays.msk.view("j")
+    fd.bernoulli(ke, p, dv,  msk, param.linear)

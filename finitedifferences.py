@@ -108,8 +108,8 @@ def compile(verbose=False):
             flux[k] = U[k]*qi
 
     @cc.export("bernoulli",
-               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], boolean)")
-    def bernoulli(ke, p, du, linear):
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:,:], boolean)")
+    def bernoulli(ke, p, du, msk, linear):
         shape = p.shape
         if linear:
             # linear case, only pressure, no kinetic energy
@@ -122,8 +122,11 @@ def compile(verbose=False):
             for k in range(shape[0]):
                 for j in range(shape[1]):
                     for i in range(1, shape[2]):
-                        du[k, j, i] -= p[k, j, i]-p[k, j, i-1] + \
-                            ke[k, j, i]-ke[k, j, i-1]
+                        if msk[j, i]+msk[j, i-1] == 2:
+                            du[k, j, i] -= p[k, j, i]-p[k, j, i-1] + \
+                                ke[k, j, i]-ke[k, j, i-1]
+                        # else:
+                        #     du[k, j, i] = 0.
 
     @cc.export("comppv",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :])")
@@ -156,19 +159,25 @@ def compile(verbose=False):
                     v0 = v1
 
     @cc.export("curl",
-               "void(f8[:, :, :], f8[:, :, :], i4)")
-    def curl(v, vort, sign):
+               "void(f8[:, :, :], f8[:, :, :], i1[:, :], i4)")
+    def curl(v, vort, msk, sign):
         shape = v.shape
         if sign == 1:
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
-                        vort[k, j, i] += v[k, j, i]-v[k, j, i-1]
+                        if msk[j, i]+msk[j, i-1]+msk[j-1, i]+msk[j-1, i-1] == 4:
+                            vort[k, j, i] += v[k, j, i]-v[k, j, i-1]
+                        else:
+                            vort[k, j, i] = 0.
         elif sign == -1:
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
-                        vort[k, j, i] -= v[k, j, i]-v[k, j, i-1]
+                        if msk[j, i]+msk[j, i-1]+msk[j-1, i]+msk[j-1, i-1] == 4:
+                            vort[k, j, i] -= v[k, j, i]-v[k, j, i-1]
+                        else:
+                            vort[k, j, i] = 0.
 
     @cc.export("compke",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i4)")
@@ -216,8 +225,8 @@ def compile(verbose=False):
                         p[k, j, i] += cff*h[l, j, i]
 
     @cc.export("vortex_force",
-               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], i4)")
-    def vortex_force(U, f, vor, dv, sign):
+               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], i1[:, :], i4)")
+    def vortex_force(U, f, vor, dv, order, sign):
         """
         computes du = du + (sign) * (vor+f)*V
 
@@ -249,18 +258,18 @@ def compile(verbose=False):
         c2 = 5./6.
         c3 = 2./6.
 
-        porder = np.zeros((nx-1,), dtype=np.int8)
-        morder = np.zeros((nx-1,), dtype=np.int8)
+        # porder = np.zeros((nx-1,), dtype=np.int8)
+        # morder = np.zeros((nx-1,), dtype=np.int8)
 
-        porder[0] = 1
-        porder[1] = 3
-        porder[2:-1] = 5
-        porder[-1] = 3
+        # porder[0] = 1
+        # porder[1] = 3
+        # porder[2:-1] = 5
+        # porder[-1] = 3
 
-        morder[0] = 3
-        morder[1:-2] = 5
-        morder[-2] = 3
-        morder[-1] = 1
+        # morder[0] = 3
+        # morder[1:-2] = 5
+        # morder[-2] = 3
+        # morder[-1] = 1
 
         for k in range(nz):
             for j in range(1, ny-1):
@@ -276,23 +285,33 @@ def compile(verbose=False):
                 # interp1d_etoc(q, Um, flux, porder, morder)
                 for i in range(nx-1):
                     if Um[i] > 0:
-                        if porder[i] == 5:
+                        porder = order[j, i]
+                        if porder == 5:
                             #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
                             qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 1)
-                        elif porder[i] == 3:
+                        elif porder == 3:
                             #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
                             qi = weno3(q[i-1], q[i], q[i+1], 1)
-                        else:
+                        elif porder == 1:
                             qi = q[i]
+                        else:
+                            qi = 0.
                     else:
-                        if morder[i] == 5:
+                        if i < nx:
+                            morder = order[j, i+1]
+                        else:
+                            morder = 0
+
+                        if morder == 5:
                             # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
                             qi = weno5(q[i-1], q[i], q[i+1], q[i+2], q[i+3], 0)
-                        elif morder[i] == 3:
+                        elif morder == 3:
                             #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
                             qi = weno3(q[i], q[i+1], q[i+2], 0)
-                        else:
+                        elif morder == 1:
                             qi = q[i+1]
+                        else:
+                            qi = 0.
 
                     flux[i] = Um[i]*qi
 
@@ -304,28 +323,28 @@ def compile(verbose=False):
                         dv[k, j, i] -= flux[i]
 
     @cc.export("upwindtrac",
-               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :])")
-    def upwindtrac(field, U, dfield):
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
+    def upwindtrac(field, U, dfield, order):
         nz, ny, nx = field.shape
 
         flux = np.zeros((nx+1,))
+        assert order.shape == (ny, nx+1)
+        # porder = np.zeros((nx+1,), dtype=np.int8)
+        # morder = np.zeros((nx+1,), dtype=np.int8)
 
-        porder = np.zeros((nx+1,), dtype=np.int8)
-        morder = np.zeros((nx+1,), dtype=np.int8)
+        # porder[0] = 0
+        # porder[1] = 1
+        # porder[2] = 3
+        # porder[3:-2] = 5
+        # porder[-2] = 3
+        # porder[-1] = 1
 
-        porder[0] = 0
-        porder[1] = 1
-        porder[2] = 3
-        porder[3:-2] = 5
-        porder[-2] = 3
-        porder[-1] = 1
-
-        morder[0] = 1
-        morder[1] = 3
-        morder[2:-3] = 5
-        morder[-3] = 3
-        morder[-2] = 1
-        morder[-1] = 0
+        # morder[0] = 1
+        # morder[1] = 3
+        # morder[2:-3] = 5
+        # morder[-3] = 3
+        # morder[-2] = 1
+        # morder[-1] = 0
 
         for I in np.ndindex(nz, ny):
             k, j = I
@@ -333,24 +352,29 @@ def compile(verbose=False):
             Um = U[k, j]
             for i in range(nx+1):
                 if Um[i] > 0:
-                    if porder[i] == 5:
+                    porder = order[j, i]
+                    if porder == 5:
                         #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
                         qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
-                    elif porder[i] == 3:
+                    elif porder == 3:
                         #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
                         qi = weno3(q[i-2], q[i-1], q[i], 1)
-                    elif porder[i] == 1:
+                    elif porder == 1:
                         qi = q[i-1]
                     else:
                         qi = 0.
                 else:
-                    if morder[i] == 5:
+                    if i < nx:
+                        morder = order[j, i+1]
+                    else:
+                        morder = 0
+                    if morder == 5:
                         # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
                         qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 0)
-                    elif morder[i] == 3:
+                    elif morder == 3:
                         #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
                         qi = weno3(q[i-1], q[i], q[i+1], 0)
-                    elif morder[i] == 1:
+                    elif morder == 1:
                         qi = q[i]
                     else:
                         qi = 0.
