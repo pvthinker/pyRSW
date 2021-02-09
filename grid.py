@@ -126,6 +126,8 @@ class Grid(object):
         self.ye = (np.arange(ny+1)-j0)*self.dy+y0
 
         self.set_coriolis()
+        self.arrays.f.view("j")
+        self.arrays.f.locked = True
 
     def set_coriolis(self):
         f = self.arrays.f
@@ -155,13 +157,15 @@ class Grid(object):
         """ compute the order of upwind discretizations
         depending on the proximity to solid boundaries
         """
+        self.arrays.msk.view("j")
+        self.arrays.msk.locked = True
         msk = self.arrays.msk.view("i")
         txporder = self.arrays.tporderx.view("i")
         vyporder = self.arrays.vpordery.view("i")
         index_tracerflux(msk, txporder, 1)
         index_vortexforce(msk, vyporder, 1)
-        # txporder = np.minimum(txporder, 1)
-        # vyporder = np.minimum(vyporder, 1)
+        # txporder = np.minimum(txporder, 0)
+        # vyporder = np.minimum(vyporder, 0)
         # txmorder = self.arrays.tmorderx.view("i")
         # index_tracerflux(msk, txmorder, 0)
 
@@ -170,10 +174,30 @@ class Grid(object):
         vxporder = self.arrays.vporderx.view("j")
         index_tracerflux(msk, typorder, 1)
         index_vortexforce(msk, vxporder, 1)
-        # typorder = np.minimum(typorder, 1)
-        # vxporder = np.minimum(vxporder, 1)
+        # typorder = np.minimum(typorder, 0)
+        # vxporder = np.minimum(vxporder, 0)
         # tymorder = self.arrays.tmordery.view("j")
         # index_tracerflux(msk, tymorder, 0)
+
+    def msku(self):
+        mskc = self.arrays.msk.view("i")
+        ny, nx = mskc.shape
+        msku = np.zeros((ny, nx+1), dtype=np.int8)
+        for j in range(ny):
+            for i in range(nx-1):
+                if mskc[j, i-1]+mskc[j, i] == 2:
+                    msku[j, i] = 1
+        return msku
+
+    def mskv(self):
+        mskc = self.arrays.msk.view("j")
+        ny, nx = mskc.shape
+        msku = np.zeros((ny, nx+1), dtype=np.int8)
+        for j in range(ny):
+            for i in range(nx-1):
+                if mskc[j, i-1]+mskc[j, i] == 2:
+                    msku[j, i] = 1
+        return msku
 
 
 @jit
@@ -192,8 +216,10 @@ def index_tracerflux(msk, order, sign):
         m = msk[j]
         for i1 in range(nx+1):
             i = i1-sign
-            if (i >= 0) and (i < nx):
+            if (i >= 0) and (i < nx-1):
                 m1 = m[i]
+            elif (i == nx-1) and m[i-1] == 1:
+                m1 = 1
             else:
                 m1 = 0
             if (i >= 1) and (i < nx-1):
@@ -276,9 +302,11 @@ def index_vortexforce(mskc, order, sign):
     for j in range(1, ny):
         m = mskv[j]
         for i1 in range(nx):
-            i = i1-sign
-            if (i >= 1) and (i < nx+1):
+            i = i1-sign+1
+            if (i >= 1) and (i < nx):
                 m1 = m[i-1]
+            elif (i == nx) and m[i-1] == 1:
+                m1 = 1
             else:
                 m1 = 0
             if (i >= 2) and (i < nx):

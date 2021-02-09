@@ -116,7 +116,10 @@ def compile(verbose=False):
             for k in range(shape[0]):
                 for j in range(shape[1]):
                     for i in range(1, shape[2]):
-                        du[k, j, i] -= p[k, j, i]-p[k, j, i-1]
+                        if msk[j, i]+msk[j, i-1] == 2:
+                            du[k, j, i] -= p[k, j, i]-p[k, j, i-1]
+                        else:
+                            du[k, j, i] = 0.
         else:
             # nonlinear case
             for k in range(shape[0]):
@@ -125,8 +128,8 @@ def compile(verbose=False):
                         if msk[j, i]+msk[j, i-1] == 2:
                             du[k, j, i] -= p[k, j, i]-p[k, j, i-1] + \
                                 ke[k, j, i]-ke[k, j, i-1]
-                        # else:
-                        #     du[k, j, i] = 0.
+                        else:
+                            du[k, j, i] = 0.
 
     @cc.export("comppv",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :])")
@@ -329,15 +332,15 @@ def compile(verbose=False):
 
         flux = np.zeros((nx+1,))
         assert order.shape == (ny, nx+1)
-        # porder = np.zeros((nx+1,), dtype=np.int8)
+        # Porder = np.zeros((nx+1,), dtype=np.int8)
         # morder = np.zeros((nx+1,), dtype=np.int8)
 
-        # porder[0] = 0
-        # porder[1] = 1
-        # porder[2] = 3
-        # porder[3:-2] = 5
-        # porder[-2] = 3
-        # porder[-1] = 1
+        # Porder[0] = 0
+        # Porder[1] = 1
+        # Porder[2] = 3
+        # Porder[3:-2] = 5
+        # Porder[-2] = 3
+        # Porder[-1] = 1
 
         # morder[0] = 1
         # morder[1] = 3
@@ -353,6 +356,7 @@ def compile(verbose=False):
             for i in range(nx+1):
                 if Um[i] > 0:
                     porder = order[j, i]
+                    #porder = Porder[i]
                     if porder == 5:
                         #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
                         qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
@@ -366,6 +370,7 @@ def compile(verbose=False):
                 else:
                     if i < nx:
                         morder = order[j, i+1]
+                        #morder = Porder[i+1]
                     else:
                         morder = 0
                     if morder == 5:

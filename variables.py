@@ -183,6 +183,7 @@ class Scalar(object):
             self.dtype = var["dtype"]
         else:
             self.dtype = "d"  # default type for arrays is float8
+        self.locked = False
 
         nh = param["nh"]
         neighbours = param["neighbours"]
@@ -244,10 +245,7 @@ class Scalar(object):
         self.view()[elem] = val
 
     def setview(self, idx):
-        if idx == self.activeview:
-            # already in the good view, nothing to do
-            pass
-        else:
+        if self.activeview != idx and not self.locked:
             # copy the current array into the desired one
             current = self.data[self.activeview]
             desired = self.data[idx]
@@ -256,7 +254,7 @@ class Scalar(object):
             elif self.ndim == 3:
                 axes = [0, 2, 1]
             desired[:] = np.transpose(current, axes)
-            self.activeview = idx
+        self.activeview = idx
             
     def view(self, idx=None):
         if idx == self.activeview or idx is None:
