@@ -261,34 +261,34 @@ def compile(verbose=False):
         c2 = 5./6.
         c3 = 2./6.
 
-        # porder = np.zeros((nx-1,), dtype=np.int8)
-        # morder = np.zeros((nx-1,), dtype=np.int8)
+        Porder = np.zeros((nx-1,), dtype=np.int8)
+        Morder = np.zeros((nx-1,), dtype=np.int8)
 
-        # porder[0] = 1
-        # porder[1] = 3
-        # porder[2:-1] = 5
-        # porder[-1] = 3
+        Porder[0] = 1
+        Porder[1] = 3
+        Porder[2:-1] = 5
+        Porder[-1] = 3
 
-        # morder[0] = 3
-        # morder[1:-2] = 5
-        # morder[-2] = 3
-        # morder[-1] = 1
+        Morder[0] = 3
+        Morder[1:-2] = 5
+        Morder[-2] = 3
+        Morder[-1] = 1
 
         for k in range(nz):
             for j in range(1, ny-1):
+                U0 = U[k, j-1, 0] + U[k, j, 0]
+                for i in range(nx):
+                    U1 = U[k, j-1, i+1] + U[k, j, i+1]
+                    Um[i] = (U0+U1)*.25
+                    U0 = U1
                 for i in range(nx):
                     q[i] = vor[k, j, i]+f[j, i]
-
-                U0 = U[k, j-1, 0] + U[k, j, 0]
-                for i in range(1, nx):
-                    U1 = U[k, j-1, i] + U[k, j, i]
-                    Um[i-1] = (U0+U1)*.25
-                    U0 = U1
 
                 # interp1d_etoc(q, Um, flux, porder, morder)
                 for i in range(nx-1):
                     if Um[i] > 0:
                         porder = order[j, i]
+                        #porder = Porder[i]
                         if porder == 5:
                             #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
                             qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 1)
@@ -300,11 +300,12 @@ def compile(verbose=False):
                         else:
                             qi = 0.
                     else:
-                        if i < nx:
+                        if i < nx-1:
                             morder = order[j, i+1]
                         else:
                             morder = 0
 
+                        #morder = Morder[i]
                         if morder == 5:
                             # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
                             qi = weno5(q[i-1], q[i], q[i+1], q[i+2], q[i+3], 0)

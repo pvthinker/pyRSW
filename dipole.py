@@ -24,17 +24,17 @@ param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.25
 param.dt = 1e-2/2
-param.tend = 8
-param.plotvar = "vor"
-param.freq_plot = 8
-param.freq_his = 0.1
-param.plot_interactive = False
+param.tend = 30.#200*param.dt
+param.plotvar = "h"
+param.freq_plot = 100
+param.freq_his = 1.#5*param.dt
+param.plot_interactive = True
 param.colorscheme = "auto"
 param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = True
 param.linear = False
 param.timestepping = "RK3_SSP"
-param.f0 = 0.
+param.f0 = 5.
 param.noslip = False
 param.var_to_save = ["h", "vor", "pv", "u"]
 
@@ -50,8 +50,14 @@ xe, ye = grid.xe, grid.ye
 
 msk = grid.arrays.msk.view("i")
 ny, nx = param.ny, param.nx
-m = vortex((xc-param.Lx/2)*.5, yc, 0., param.Ly/2, param.Lx/2)
-msk[:] = np.asarray(m>m[3,param.nx//2], dtype="b")
+m = vortex((xc-param.Lx/2)*.9, yc+0.2, 0., param.Ly/2, param.Lx/2)
+msk[:] = np.asarray(m>0.7)
+msk[-1,:] = 0
+#msk[:,-2:] = 0
+#msk[:,:2] = 0
+
+#msk[-2:,:] = 0
+#msk[:2,:] = 0
 grid.finalize()
 
 model = RSW(param, grid)
@@ -71,7 +77,7 @@ f = param.f0
 d = 0.07  # vortex radius
 dsep = d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.3e-3
+amp = -0.3
 
 x0 = param.Lx/2
 y0 = param.Ly/2
@@ -81,6 +87,8 @@ h[0] = h0
 h[0] -= amp*vortex(xc, yc, x0-dsep, y0, d)
 h[0] += amp*vortex(xc, yc, x0+dsep, y0, d)
 
+# for k in range(param.nz):
+#     h[k] *= msk
 
 # to set initial geostropic adjustement
 # define exactly the same height but at corner cells...
@@ -105,8 +113,20 @@ def grad(phi, dphidx, dphidy):
 u[:] = 0.
 v[:] = 0.
 # then take the rotated gradient of it
-# grad(hF, v, u)
-# u[:] *= -(g/f)
-# v[:] *= +(g/f)
+grad(hF, v, u)
+u[:] *= -(g/f)
+v[:] *= +(g/f)
+
+
+u = model.state.ux.view("i")
+v = model.state.uy.view("j")
+
+msku = grid.msku()
+mskv = grid.mskv()
+
+for k in range(param.nz):
+    u[k] *= msku
+    v[k] *= mskv
+
 hF[:] = 0.
 model.run()

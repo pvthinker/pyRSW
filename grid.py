@@ -162,8 +162,8 @@ class Grid(object):
         msk = self.arrays.msk.view("i")
         txporder = self.arrays.tporderx.view("i")
         vyporder = self.arrays.vpordery.view("i")
-        index_tracerflux(msk, txporder, 1)
-        index_vortexforce(msk, vyporder, 1)
+        index_tracerflux(msk, txporder)
+        index_vortexforce(msk, vyporder)
         # txporder = np.minimum(txporder, 0)
         # vyporder = np.minimum(vyporder, 0)
         # txmorder = self.arrays.tmorderx.view("i")
@@ -172,8 +172,8 @@ class Grid(object):
         msk = self.arrays.msk.view("j")
         typorder = self.arrays.tpordery.view("j")
         vxporder = self.arrays.vporderx.view("j")
-        index_tracerflux(msk, typorder, 1)
-        index_vortexforce(msk, vxporder, 1)
+        index_tracerflux(msk, typorder)
+        index_vortexforce(msk, vxporder)
         # typorder = np.minimum(typorder, 0)
         # vxporder = np.minimum(vxporder, 0)
         # tymorder = self.arrays.tmordery.view("j")
@@ -200,8 +200,8 @@ class Grid(object):
         return msku
 
 
-@jit
-def index_tracerflux(msk, order, sign):
+#@jit
+def index_tracerflux(msk, order):
     """
     Determine the order for the biased interpolation
     of tracer along direction x at U point
@@ -215,19 +215,17 @@ def index_tracerflux(msk, order, sign):
     for j in range(ny):
         m = msk[j]
         for i1 in range(nx+1):
-            i = i1-sign
-            if (i >= 0) and (i < nx-1):
-                m1 = m[i]
-            elif (i == nx-1) and m[i-1] == 1:
-                m1 = 1
+            i = i1
+            if (i >= 1):
+                m1 = m[i-1]
             else:
                 m1 = 0
-            if (i >= 1) and (i < nx-1):
-                m3 = m[i-1]+m[i]+m[i+1]
+            if (i >= 2) and (i < nx):
+                m3 = m[i-2]+m[i-1]+m[i]
             else:
                 m3 = 0
-            if (i >= 2) and (i < nx-2):
-                m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
+            if (i >= 3) and (i < nx-1):
+                m5 = m[i-3]+m[i-2]+m[i-1]+m[i]+m[i+1]
             else:
                 m5 = 0
 
@@ -271,8 +269,8 @@ def index_tracerflux(msk, order, sign):
 #                 order[j, i] = 0
 
 
-@jit
-def index_vortexforce(mskc, order, sign):
+#@jit
+def index_vortexforce(mskc, order):
     """
     Determine the order for the biased interpolation
     of vorticity along direction x at V point
@@ -299,22 +297,26 @@ def index_vortexforce(mskc, order, sign):
                 mskv[j, i+1] = 1
                 mskv[j, i] = 1
 
-    for j in range(1, ny):
+    # for j in range(1,ny):
+    #     for i in range(1, nx):
+    #         if mskc[j, i]+mskc[j,i-1]+mskc[j-1, i]+mskc[j-1,i-1] == 4:
+    #             mskv[j, i] = 1
+
+
+    for j in range(ny+1):
         m = mskv[j]
         for i1 in range(nx):
-            i = i1-sign+1
-            if (i >= 1) and (i < nx):
-                m1 = m[i-1]
-            elif (i == nx) and m[i-1] == 1:
-                m1 = 1
+            i = i1
+            if (i >= 0) and (i < nx):
+                m1 = m[i]
             else:
                 m1 = 0
-            if (i >= 2) and (i < nx):
-                m3 = m[i-2]+m[i-1]+m[i]
+            if (i >= 1) and (i < nx-1):
+                m3 = m[i-1]+m[i]+m[i+1]
             else:
                 m3 = 0
-            if (i >= 3) and (i < nx-1):
-                m5 = m[i-3]+m[i-2]+m[i-1]+m[i]+m[i+1]
+            if (i >= 2) and (i < nx-2):
+                m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
             else:
                 m5 = 0
 
