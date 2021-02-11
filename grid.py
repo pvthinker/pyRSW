@@ -216,7 +216,9 @@ def index_tracerflux(msk, order):
         m = msk[j]
         for i1 in range(nx+1):
             i = i1
-            if (i >= 1):
+            if (i >= 1) and (i < nx):
+                m1 = m[i-1]+m[i]
+            elif (i==nx):
                 m1 = m[i-1]
             else:
                 m1 = 0
@@ -233,7 +235,7 @@ def index_tracerflux(msk, order):
                 order[j, i1] = 5
             elif m3 == 3:
                 order[j, i1] = 3
-            elif m1 == 1:
+            elif m1 >= 1:
                 order[j, i1] = 1
             else:
                 order[j, i1] = 0
@@ -307,15 +309,15 @@ def index_vortexforce(mskc, order):
         m = mskv[j]
         for i1 in range(nx):
             i = i1
-            if (i >= 0) and (i < nx):
+            if (i >= 0) and (i < nx+1):
                 m1 = m[i]
             else:
                 m1 = 0
-            if (i >= 1) and (i < nx-1):
+            if (i >= 1) and (i < nx):
                 m3 = m[i-1]+m[i]+m[i+1]
             else:
                 m3 = 0
-            if (i >= 2) and (i < nx-2):
+            if (i >= 2) and (i < nx-1):
                 m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
             else:
                 m5 = 0

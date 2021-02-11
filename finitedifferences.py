@@ -115,21 +115,25 @@ def compile(verbose=False):
             # linear case, only pressure, no kinetic energy
             for k in range(shape[0]):
                 for j in range(shape[1]):
+                    du[k, j, 0] = 0.
                     for i in range(1, shape[2]):
                         if msk[j, i]+msk[j, i-1] == 2:
                             du[k, j, i] -= p[k, j, i]-p[k, j, i-1]
                         else:
                             du[k, j, i] = 0.
+                    du[k, j, -1] = 0.
         else:
             # nonlinear case
             for k in range(shape[0]):
                 for j in range(shape[1]):
+                    du[k, j, 0] = 0.
                     for i in range(1, shape[2]):
                         if msk[j, i]+msk[j, i-1] == 2:
                             du[k, j, i] -= p[k, j, i]-p[k, j, i-1] + \
                                 ke[k, j, i]-ke[k, j, i-1]
                         else:
                             du[k, j, i] = 0.
+                    du[k, j, -1] = 0.
 
     @cc.export("comppv",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :])")
@@ -256,28 +260,31 @@ def compile(verbose=False):
         Um = np.zeros((nx-1,))
         flux = np.zeros((nx-1,))
 
+        assert U.shape == (nz, ny-1, nx)
+        assert dv.shape == (nz, ny, nx-1)
+        assert order.shape == (ny-1, nx)
         # third order linear
         c1 = -1./6.
         c2 = 5./6.
         c3 = 2./6.
 
-        Porder = np.zeros((nx-1,), dtype=np.int8)
-        Morder = np.zeros((nx-1,), dtype=np.int8)
+        # Porder = np.zeros((nx-1,), dtype=np.int8)
+        # Morder = np.zeros((nx-1,), dtype=np.int8)
 
-        Porder[0] = 1
-        Porder[1] = 3
-        Porder[2:-1] = 5
-        Porder[-1] = 3
+        # Porder[0] = 1
+        # Porder[1] = 3
+        # Porder[2:-1] = 5
+        # Porder[-1] = 3
 
-        Morder[0] = 3
-        Morder[1:-2] = 5
-        Morder[-2] = 3
-        Morder[-1] = 1
+        # Morder[0] = 3
+        # Morder[1:-2] = 5
+        # Morder[-2] = 3
+        # Morder[-1] = 1
 
         for k in range(nz):
             for j in range(1, ny-1):
                 U0 = U[k, j-1, 0] + U[k, j, 0]
-                for i in range(nx):
+                for i in range(nx-1):
                     U1 = U[k, j-1, i+1] + U[k, j, i+1]
                     Um[i] = (U0+U1)*.25
                     U0 = U1
@@ -300,10 +307,7 @@ def compile(verbose=False):
                         else:
                             qi = 0.
                     else:
-                        if i < nx-1:
-                            morder = order[j, i+1]
-                        else:
-                            morder = 0
+                        morder = order[j, i+1]
 
                         #morder = Morder[i]
                         if morder == 5:
