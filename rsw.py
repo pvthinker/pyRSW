@@ -67,23 +67,30 @@ class RSW(object):
 
         self.io.create_history_file(self.state)
         self.io.dohis(self.state, self.t)
-        nexthistime = self.t + self.param.freq_his
+        nexthistime = self.io.kt * self.param.freq_his
 
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.grid, self.state, self.t)
 
         tend = self.param.tend
         self.ok = self.t < tend
+        self.termination_status = "Job completed as expected"
 
         while self.ok:
             self.dt = self.compute_dt()
-            self.timescheme.forward(self.state, self.t, self.dt)
+            blowup = self.forward()
+            if blowup:
+                self.ok = False
+                self.termination_status = "BLOW UP detected"
 
             if self.t >= tend:
                 self.ok = False
             else:
-                self.t += self.dt
                 kite += 1
+                if self.param.auto_dt:
+                    self.t += self.dt
+                else:
+                    self.t = kite*self.dt
 
             if self.param.plot_interactive and (kite % self.param.freq_plot) == 0:
                 if self.param.plotvar == "pv":
@@ -96,20 +103,28 @@ class RSW(object):
             if self.t >= nexthistime:
                 self.diagnose_supplementary(self.state)
                 self.io.dohis(self.state, self.t)
-                nexthistime += self.param.freq_his
+                nexthistime = self.io.kt * self.param.freq_his
 
             time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} his={nexthistime:.2f}/{tend:.2f}"
             print(time_string, end="")
 
         if self.param.plot_interactive:
             fig.finalize()
+
+        if blowup:
+            # save the state for debug
+            self.io.dohis(self.state, self.t)
+
         if self.param.myrank == 0:
             print()
-            if self.ok:
-                print("Job is aborted")
-            else:
-                print("Job completed as expected")
+            print(self.termination_status)
             print(f"Output written to: {self.io.hist_path}")
+
+    def forward(self):
+        self.timescheme.forward(self.state, self.t, self.dt)
+        h = self.state.h[:]
+        blowup = any(np.isnan(h.flat))
+        return blowup
 
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
@@ -173,12 +188,16 @@ class RSW(object):
                 var[..., -nh-1:] = var[..., nh:nh2+1]
 
     def compute_dt(self):
+
         if self.param.auto_dt:
+            c_max = np.sqrt(self.param.g*self.bulk.H_max)
             U_max = self.bulk.U_max
-            if U_max == 0.0:
+
+            vmax = max(c_max, U_max)
+            if vmax == 0.0:
                 return self.param.dt_max
             else:
-                dt = self.param.cfl / U_max
+                dt = self.param.cfl / vmax
                 return min(dt, self.param.dt_max)
         else:
             return self.param.dt
@@ -187,6 +206,7 @@ class RSW(object):
         if self.param.myrank == 0:
             print('\n hit ctrl-C, stopping', end='')
         self.ok = False
+        self.termination_status = "Job manually interrupted"
 
     def banner(self):
         logo = [
