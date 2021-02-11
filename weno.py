@@ -31,7 +31,7 @@ cff7 = 781./20.
 cff8 = 1421461./2275.
 cff9 = 1./3.
 
-eps = 1e-12
+eps = 1e-8
 
 gammaHi = 0.9
 gammaLo = 0.9
@@ -83,7 +83,7 @@ def weno5(qmm, qm, q0, qp, qpp, sign):
 
     # Eq. 2.6
     beta_1 = ux_1*ux_1 + cff1*ux2_1*ux2_1
-    beta_2 = ux_2*ux_2 + cff1*ux2_2*ux2_3
+    beta_2 = ux_2*ux_2 + cff1*ux2_2*ux2_2
     beta_3 = ux_3*ux_3 + cff1*ux2_3*ux2_3
 
     w_1 = g1/(beta_1+eps)**2
