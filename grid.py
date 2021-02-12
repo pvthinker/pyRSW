@@ -53,17 +53,35 @@ gridvar = {
         "prognostic": False}
 }
 
-for var in "tv":
-    for sense in "p":
-        nickname = f"{var}{sense}order"
-        gridvar[nickname] = {
-            "type": "vector",
-            "dtype": "b",  # 'b' is int8
-            "name": nickname,
-            "dimensions": ["y", "x"],
-            "unit": "1",
-            "constant": True,
-            "prognostic": False}
+nickname = "tporder"
+gridvar[nickname] = {
+    "type": "vector",
+    "dtype": "b",  # 'b' is int8
+    "name": nickname,
+    "dimensions": ["y", "x"],
+    "unit": "1",
+    "constant": True,
+    "prognostic": False}
+
+nickname = "vporderx"
+gridvar[nickname] = {
+    "type": "vorticity",
+    "dtype": "b",  # 'b' is int8
+    "name": nickname,
+    "dimensions": ["y", "x"],
+    "unit": "1",
+    "constant": True,
+    "prognostic": False}
+
+nickname = "vpordery"
+gridvar[nickname] = {
+    "type": "vorticity",
+    "dtype": "b",  # 'b' is int8
+    "name": nickname,
+    "dimensions": ["y", "x"],
+    "unit": "1",
+    "constant": True,
+    "prognostic": False}
 
 
 def set_domain_decomposition(param):
@@ -255,36 +273,6 @@ def index_tracerflux(msk, order):
                 order[j, i1] = 0
 
 
-# @jit
-# def index_mtracerflux(msk, order):
-#     ny, nx = msk.shape
-#     assert order.shape == (ny, nx+1)
-#     for j in range(ny):
-#         m = msk[j]
-#         for i in range(nx+1):
-#             if (i >= 0) and (i < nx):
-#                 m1 = m[i]
-#             else:
-#                 m1 = 0
-#             if (i >= 1) and (i < nx-1):
-#                 m3 = m[i-1]+m[i]+m[i-1]
-#             else:
-#                 m3 = 0
-#             if (i >= 2) and (i < nx-2):
-#                 m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
-#             else:
-#                 m5 = 0
-
-#             if m5 == 5:
-#                 order[j, i] = 5
-#             elif m3 == 3:
-#                 order[j, i] = 3
-#             elif m1 == 1:
-#                 order[j, i] = 1
-#             else:
-#                 order[j, i] = 0
-
-
 #@jit
 def index_vortexforce(mskc, order):
     """
@@ -292,7 +280,7 @@ def index_vortexforce(mskc, order):
     of vorticity along direction x at V point
 
     mskc: [ny, nx] msk at centers
-    order: [ny+1, nx] order at V point
+    order: [ny+1, nx+1] order at V point
     sign:
       - 1 for left-biased
       - 0 for right biased
@@ -302,7 +290,7 @@ def index_vortexforce(mskc, order):
 
     """
     ny, nx = mskc.shape
-    assert order.shape == (ny+1, nx)
+    assert order.shape == (ny+1, nx+1)
     # derive the mask at vorticity point
     mskv = np.zeros((ny+1, nx+1), dtype=mskc.dtype)
     for j in range(ny):
@@ -313,15 +301,9 @@ def index_vortexforce(mskc, order):
                 mskv[j, i+1] = 1
                 mskv[j, i] = 1
 
-    # for j in range(1,ny):
-    #     for i in range(1, nx):
-    #         if mskc[j, i]+mskc[j,i-1]+mskc[j-1, i]+mskc[j-1,i-1] == 4:
-    #             mskv[j, i] = 1
-
-
     for j in range(ny+1):
         m = mskv[j]
-        for i1 in range(nx):
+        for i1 in range(nx+1):
             i = i1
             if (i >= 0) and (i < nx+1):
                 m1 = m[i]

@@ -110,13 +110,14 @@ def compile(verbose=False):
     @cc.export("bernoulli",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:,:], boolean)")
     def bernoulli(ke, p, du, msk, linear):
-        shape = p.shape
+        nz, ny, nx = p.shape
+        assert du.shape == (nz, ny, nx+1)
         if linear:
             # linear case, only pressure, no kinetic energy
-            for k in range(shape[0]):
-                for j in range(shape[1]):
+            for k in range(nz):
+                for j in range(ny):
                     du[k, j, 0] = 0.
-                    for i in range(1, shape[2]):
+                    for i in range(1, nx):
                         if msk[j, i]+msk[j, i-1] == 2:
                             du[k, j, i] -= p[k, j, i]-p[k, j, i-1]
                         else:
@@ -124,10 +125,10 @@ def compile(verbose=False):
                     du[k, j, -1] = 0.
         else:
             # nonlinear case
-            for k in range(shape[0]):
-                for j in range(shape[1]):
+            for k in range(nz):
+                for j in range(ny):
                     du[k, j, 0] = 0.
-                    for i in range(1, shape[2]):
+                    for i in range(1, nx):
                         if msk[j, i]+msk[j, i-1] == 2:
                             du[k, j, i] -= p[k, j, i]-p[k, j, i-1] + \
                                 ke[k, j, i]-ke[k, j, i-1]
@@ -238,8 +239,8 @@ def compile(verbose=False):
                         p[k,j,i] /= area[j,i]
 
     @cc.export("vortex_force",
-               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], i1[:, :], i4)")
-    def vortex_force(U, f, vor, dv, order, sign):
+               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], f8[:], i1[:, :], i4)")
+    def vortex_force(U, f, vor, dv, q, order, sign):
         """
         computes du = du + (sign) * (vor+f)*V
 
@@ -262,17 +263,14 @@ def compile(verbose=False):
 
         """
         nz, ny, nx = vor.shape
-        q = np.zeros((nx,))
-        Um = np.zeros((nx-1,))
-        flux = np.zeros((nx-1,))
+        #q = np.zeros((nx,))
+        #Um = np.zeros((nx-1,))
+        #flux = np.zeros((nx-1,))
 
         assert U.shape == (nz, ny-1, nx)
         assert dv.shape == (nz, ny, nx-1)
-        assert order.shape == (ny-1, nx)
-        # third order linear
-        c1 = -1./6.
-        c2 = 5./6.
-        c3 = 2./6.
+        assert order.shape == (ny, nx)
+        assert q.shape == (nx,)
 
         # Porder = np.zeros((nx-1,), dtype=np.int8)
         # Morder = np.zeros((nx-1,), dtype=np.int8)
@@ -289,17 +287,20 @@ def compile(verbose=False):
 
         for k in range(nz):
             for j in range(1, ny-1):
-                U0 = U[k, j-1, 0] + U[k, j, 0]
-                for i in range(nx-1):
-                    U1 = U[k, j-1, i+1] + U[k, j, i+1]
-                    Um[i] = (U0+U1)*.25
-                    U0 = U1
+                # U0 = U[k, j-1, 0] + U[k, j, 0]
+                # for i in range(nx-1):
+                #     U1 = U[k, j-1, i+1] + U[k, j, i+1]
+                #     Um[i] = (U0+U1)*.25
+                #     U0 = U1
                 for i in range(nx):
                     q[i] = vor[k, j, i]+f[j, i]
 
                 # interp1d_etoc(q, Um, flux, porder, morder)
+                U0 = U[k, j-1, 0] + U[k, j, 0]
                 for i in range(nx-1):
-                    if Um[i] > 0:
+                    U1 = U[k, j-1, i+1] + U[k, j, i+1]
+                    Um = (U0+U1)*.25
+                    if Um > 0:
                         porder = order[j, i]
                         #porder = Porder[i]
                         if porder == 5:
@@ -327,21 +328,25 @@ def compile(verbose=False):
                         else:
                             qi = 0.
 
-                    flux[i] = Um[i]*qi
+                    #flux[i] = Um[i]*qi
+                    if sign == 1:
+                        dv[k, j, i] += Um*qi
+                    else:
+                        dv[k, j, i] -= Um*qi
 
-                if sign == 1:
-                    for i in range(nx-1):
-                        dv[k, j, i] += flux[i]
-                elif sign == -1:
-                    for i in range(nx-1):
-                        dv[k, j, i] -= flux[i]
+                # if sign == 1:
+                #     for i in range(nx-1):
+                #         dv[k, j, i] += flux[i]
+                # elif sign == -1:
+                #     for i in range(nx-1):
+                #         dv[k, j, i] -= flux[i]
 
     @cc.export("upwindtrac",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
     def upwindtrac(field, U, dfield, order):
         nz, ny, nx = field.shape
 
-        flux = np.zeros((nx+1,))
+        #flux = np.zeros((nx+1,))
         assert order.shape == (ny, nx+1)
         # Porder = np.zeros((nx+1,), dtype=np.int8)
         # morder = np.zeros((nx+1,), dtype=np.int8)
@@ -363,9 +368,9 @@ def compile(verbose=False):
         for I in np.ndindex(nz, ny):
             k, j = I
             q = field[k, j]
-            Um = U[k, j]
-            for i in range(nx+1):
-                if Um[i] > 0:
+            #Um = U[k, j]
+            for i in range(1,nx+1):
+                if U[k,j,i] > 0:
                     porder = order[j, i]
                     #porder = Porder[i]
                     if porder == 5:
@@ -395,10 +400,13 @@ def compile(verbose=False):
                     else:
                         qi = 0.
 
-                flux[i] = Um[i]*qi
+                #flux[i] = Um[i]*qi
+                f = U[k,j,i]*qi
+                dfield[k, j, i] += f
+                dfield[k, j, i-1] -= f
 
             # interp1d_ctoe(field[k, j], U[k, j], flux)
-            for i in range(nx):
-                dfield[k, j, i] -= flux[i+1]-flux[i]
+            # for i in range(nx):
+            #     dfield[k, j, i] -= flux[i+1]-flux[i]
 
     cc.compile()

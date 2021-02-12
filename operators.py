@@ -1,5 +1,5 @@
 import finitediff as fd
-
+import numpy as np
 
 def comppv(state, grid):
     vor = state.vor.view("i")
@@ -76,7 +76,9 @@ def vortex_force(state, dstate, param, grid):
     f = grid.arrays.f.view("j")
     # du/dt += (vor+f) * V
     order = grid.arrays.vpordery.view("j")
-    fd.vortex_force(V, f, vor, du, order, +1)
+    nx = vor.shape[2]
+    q = np.zeros((nx,))
+    fd.vortex_force(V, f, vor, du, q, order, +1)
 
     dv = dstate.u["j"].view("i")
     U = state.U["i"].view("i")
@@ -84,7 +86,9 @@ def vortex_force(state, dstate, param, grid):
     f = grid.arrays.f.view("i")
     # dv/dt -= (vor+f) * U
     order = grid.arrays.vporderx.view("i")
-    fd.vortex_force(U, f, vor, dv, order, -1)
+    nx = vor.shape[2]
+    q = np.zeros((nx,))
+    fd.vortex_force(U, f, vor, dv, q, order, -1)
 
 
 def bernoulli(state, dstate, param, grid):
