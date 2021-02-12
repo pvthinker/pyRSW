@@ -34,7 +34,7 @@ class RSW(object):
         self.state.tracers = ["h"]  # <- TODO improve for the general case
         self.fix_density()
         # self.set_coriolis()
-        self.bulk = Bulk(param)
+        self.bulk = Bulk(param, grid)
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
@@ -43,8 +43,8 @@ class RSW(object):
         """ Transform param.rho into a numpy array
         for use in the montgomery computation"""
         if self.param.nz == 1:
-            assert isinstance(self.param.rho, float)
-            self.param.rho = np.asarray([self.param.rho])
+            if isinstance(self.param.rho, float):
+                self.param.rho = np.asarray([self.param.rho])
         else:
             assert len(self.param.rho) == self.param.nz
             self.param.rho = np.asarray(self.param.rho)
@@ -150,10 +150,10 @@ class RSW(object):
         self.applybc(state.vor)
         if self.param.noslip:
             self.applynoslip(state)
-        operators.montgomery(state, self.grid.arrays.hb, self.param)
+        operators.montgomery(state, self.grid, self.param)
 
     def diagnose_supplementary(self, state):
-        operators.comppv(state, self.grid.arrays.f)
+        operators.comppv(state, self.grid)
 
     def applynoslip(self, state):
         if self.param.geometry == "closed":

@@ -1,12 +1,12 @@
 import finitediff as fd
 
 
-def comppv(state, f):
+def comppv(state, grid):
     vor = state.vor.view("i")
-    farray = f.view("i")
+    f = grid.arrays.f.view("i")
     h = state.h.view("i")
     pv = state.pv.view("i")
-    fd.comppv(vor, farray, h, pv)
+    fd.comppv(vor, f, h, pv)
 
 
 def comppv_c(state):
@@ -47,14 +47,18 @@ def kinenergy(state, param):
     fd.compke(v, V, ke, 1)
 
 
-def montgomery(state, hb, param):
+def montgomery(state, grid, param):
     rho = param["rho"]
     g = param["g"]
+
     h = state.h.view("i")
-    hbarray = hb.view("i")
     p = state.p.view("i")
 
-    fd.montgomery(h, hbarray, p, rho, g)
+    hb = grid.arrays.hb.view("i")
+    area = grid.arrays.vol.view("i")
+    msk = grid.arrays.msk.view("i")
+
+    fd.montgomery(h, hb, p, area, rho, g, msk)
 
 # def montgomery(state, param):
 #     #rho0 = param["rho"]

@@ -4,9 +4,10 @@
 import numpy as np
 
 class Bulk(object):
-    def __init__(self, param):
+    def __init__(self, param, grid):
         self.U_max = 0.
         self.H_max = param.H
+        self.cellarea = grid.dx*grid.dy
 
     def compute(self, state):        
         U = state.U
@@ -16,4 +17,4 @@ class Bulk(object):
         self.U_max = U_max
 
         h = state.h.view()
-        self.H_max = max(np.sum(h,axis=0).flat)
+        self.H_max = max(np.sum(h,axis=0).flat)/self.cellarea

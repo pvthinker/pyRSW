@@ -60,7 +60,6 @@ modelvar = {
 }
 
 
-
 class State(object):
     def __init__(self, param, variables):
         """
@@ -86,19 +85,18 @@ class State(object):
                 obj = Vector(nickname, var, param)
 
             elif var["type"] == 'vorticity':
-                obj = Scalar(nickname, var, param, stagg="xy") 
+                obj = Scalar(nickname, var, param, stagg="xy")
                 toc[nickname] = var["prognostic"]
 
-
             setattr(self, nickname, obj)
-            
+
             if var["type"] == 'vector':
                 for dir, axis in zip("xy", "ij"):
                     alt_nickname = nickname+dir
                     setattr(self, alt_nickname, obj[axis])
                     toc[alt_nickname] = var["prognostic"]
 
-        self.toc = toc            
+        self.toc = toc
 
     def __repr__(self):
         string = ["State"]
@@ -108,7 +106,7 @@ class State(object):
             name = var["name"]
             string += [f"  - {nickname:4}: {t:9} : {name}"]
         return "\n".join(string)
-        
+
     def get(self, nickname):
         return getattr(self, nickname)
 
@@ -119,7 +117,8 @@ class State(object):
     def duplicate_prognostic_variables(self):
         """Return a new state with new arrays for prognostic variables."""
         list_of_variables = []
-        prognostic_variables = {nickname: var for nickname, var in modelvar.items() if var["prognostic"]}
+        prognostic_variables = {nickname: var for nickname,
+                                var in modelvar.items() if var["prognostic"]}
         return State(self.param, prognostic_variables)
 
     def set_to_zero(self):
@@ -128,8 +127,8 @@ class State(object):
             if prognostic:
                 obj = self.get(nickname)
                 obj.view()[:] = 0.
-                    
-            
+
+
 class Vector(object):
     def __init__(self, nickname, var, param):
         self.nickname = nickname
@@ -255,7 +254,7 @@ class Scalar(object):
                 axes = [0, 2, 1]
             desired[:] = np.transpose(current, axes)
         self.activeview = idx
-            
+
     def view(self, idx=None):
         if idx == self.activeview or idx is None:
             pass
@@ -270,11 +269,12 @@ class Scalar(object):
     def viewlike(self, scalar):
         """Return view in the same convention as scalar."""
         return self.view(scalar.activeview)
-        
+
     def getproperunits(self, grid):
         if self.param.physicalunits:
             if self.nickname == "h":
-                return self.view("i")
+                area = grid.arrays.vol.view("i")
+                return self.view("i")/area
 
             if self.nickname == "ux":
                 return self.view("i")*grid.idx
@@ -282,11 +282,15 @@ class Scalar(object):
             if self.nickname == "uy":
                 return self.view("i")*grid.idy
 
-            if self.nickname in ["f", "vor", "pv"]:
+            if self.nickname in ["f", "vor"]:
                 return self.view("i")*grid.iarea
+
+            if self.nickname in ["pv"]:
+                return self.view("i")
 
         else:
             return self.view("i")
+
 
 if __name__ == "__main__":
     param = {"nz": 2, "ny": 256, "nx": 256, "nh": 2}
@@ -298,12 +302,12 @@ if __name__ == "__main__":
     state = State(param, modelvar)
     u = state.u
     print(u)
-    
+
     # to access the numpy array of the x-component
     ux = u["i"].view()
     ux[:, 2, :] = 1.
     print(ux)
-    
+
     # to flip i and j axes
     ux = u["i"].view("j")
     print(ux)

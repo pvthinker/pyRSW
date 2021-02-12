@@ -208,8 +208,8 @@ def compile(verbose=False):
                         ke0 = ke1
 
     @cc.export("montgomery",
-               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:], f8)")
-    def montgomery(h, hb, p, rho, g):
+               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :], f8[:], f8, i1[:, :])")
+    def montgomery(h, hb, p, area, rho, g, msk):
         shape = h.shape
         nz = shape[0]
         assert rho.shape[0] == nz
@@ -230,6 +230,12 @@ def compile(verbose=False):
                 for j in range(shape[1]):
                     for i in range(shape[2]):
                         p[k, j, i] += cff*h[l, j, i]
+
+        for k in range(nz):
+            for j in range(shape[1]):
+                for i in range(shape[2]):
+                    if msk[j,i] == 1:
+                        p[k,j,i] /= area[j,i]
 
     @cc.export("vortex_force",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], i1[:, :], i4)")

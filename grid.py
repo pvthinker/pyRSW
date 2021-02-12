@@ -22,6 +22,20 @@ gridvar = {
         "unit": "L",
         "constant": True,
         "prognostic": False},
+    "vol": {
+        "type": "scalar",
+        "name": "area",
+        "dimensions": ["y", "x"],
+        "unit": "L^2",
+        "constant": True,
+        "prognostic": False},
+    "volv": {
+        "type": "vorticity",
+        "name": "area",
+        "dimensions": ["y", "x"],
+        "unit": "L^2",
+        "constant": True,
+        "prognostic": False},
     "f": {
         "type": "vorticity",
         "name": "coriolis",
@@ -131,7 +145,7 @@ class Grid(object):
 
     def set_coriolis(self):
         f = self.arrays.f
-        f[:] = self.f0*self.area
+        f[:] = self.f0*self.arrays.volv.view("i")
 
     def sum(self, array3d):
         """ compute the global domain sum of array3d
