@@ -82,9 +82,9 @@ def weno5(qmm, qm, q0, qp, qpp, sign):
     ux2_3 = 0.5*(q0+qpp)-qp
 
     # Eq. 2.6
-    beta_1 = ux_1*ux_1 + cff1*ux2_1*ux2_1
-    beta_2 = ux_2*ux_2 + cff1*ux2_2*ux2_2
-    beta_3 = ux_3*ux_3 + cff1*ux2_3*ux2_3
+    beta_1 = ux_1**2 + cff1*ux2_1**2
+    beta_2 = ux_2**2 + cff1*ux2_2**2
+    beta_3 = ux_3**2 + cff1*ux2_3**2
 
     w_1 = g1/(beta_1+eps)**2
     w_2 = g2/(beta_2+eps)**2
