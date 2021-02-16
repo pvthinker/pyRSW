@@ -43,6 +43,13 @@ gridvar = {
         "unit": "L^2.T^-1",
         "constant": True,
         "prognostic": False},
+    "invd": {
+        "type": "vector",
+        "name": "inverse of squared Lame coefficient",
+        "dimensions": ["y", "x"],
+        "unit": "L^-2",
+        "constant": True,
+        "prognostic": False},
     "msk": {
         "type": "scalar",
         "dtype": "b",  # 'b' is int8
@@ -182,8 +189,10 @@ class Grid(object):
         V = state.Uy.view("i")
         u = state.ux.view("i")
         v = state.uy.view("i")
-        U[:] = u * self.idx2
-        V[:] = v * self.idy2
+        idx2 = self.arrays.invdx.view("i")
+        idy2 = self.arrays.invdy.view("i")
+        U[:] = u * idx2
+        V[:] = v * idy2
 
     def finalize(self):
         """ compute the order of upwind discretizations

@@ -1,3 +1,5 @@
+from movietools import Movie
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import matplotlib
@@ -5,10 +7,9 @@ import matplotlib
 matplotlib.use('TkAgg')
 font = {'size': 16}
 matplotlib.rc('font', **font)
-import matplotlib.pyplot as plt
-from movietools import Movie
 
 plt.ion()
+
 
 class Figure(object):
     def __init__(self, param, grid, state, time):
@@ -21,15 +22,24 @@ class Figure(object):
 
         self.fig = plt.figure(figsize=(12, 12))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
-        self.im = self.ax1.imshow(z2d, extent=[0, Lx, 0, Ly], cmap='RdBu_r',
-                                  interpolation='nearest', origin='lower')
+        if param.plot_type == "imshow":
+            self.im = self.ax1.imshow(z2d, extent=[0, Lx, 0, Ly], cmap='RdBu_r',
+                                      interpolation='nearest', origin='lower')
+        elif param.plot_type == "pcolormesh":
+            ye, xe = grid.ye, grid.xe
+            self.im = self.ax1.pcolormesh(xe, ye, z2d, cmap='RdBu_r')
+        else:
+            raise ValueError
+
         plt.colorbar(self.im)
         self.ax1.set_title('%s / t=%.2f' % (var.name, time))
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
-        self.ax1.text(0.02*Lx, 0.95*Ly, 'Rd=%.2f' % (np.sqrt(param.g*param.H)/param.f0))
+        self.ax1.text(0.02*Lx, 0.95*Ly, 'Rd=%.2f' %
+                      (np.sqrt(param.g*param.H)/param.f0))
         #self.ax1.text(0.02*Lx, 0.9*Ly, 'Ro=%.2f' % rossby)
-        self.ax1.text(0.02*Lx, 0.85*Ly, r'$\sqrt{gH}$=%.2f' % (np.sqrt(param.g*param.H)))
+        self.ax1.text(0.02*Lx, 0.85*Ly,
+                      r'$\sqrt{gH}$=%.2f' % (np.sqrt(param.g*param.H)))
         self.fig.show()
         self.fig.canvas.draw()
         if param.generate_mp4:
@@ -43,7 +53,11 @@ class Figure(object):
     def update(self, time, state):
         var = state.get(self.plotvar)
         z2d = var.getproperunits(self.grid)[-1]
-        self.im.set_array(z2d)
+        if self.param.plot_type == "imshow":
+            self.im.set_array(z2d)
+        else:
+            self.im.set_array(z2d.ravel())
+
         if self.param.colorscheme == 'imposed':
             vmin, vmax = self.param.cax
         elif self.param.colorscheme == 'auto':

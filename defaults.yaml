@@ -121,6 +121,12 @@ output:
     doc: List of variables names that we want to output in the history file. The variables names have to be consistent with the model
     type: str
 
+  hisdtype:
+    default: "f"
+    doc: numpy dtype for float in the netCDF file
+    avail: "efdg"
+    type: str
+
 #--------------------
 physics:
 
@@ -205,6 +211,12 @@ plotting options:
     doc: Interpolation scheme for the imshow rendering
     type: str
 
+  plot_type:
+    avail: imshow, pcolormesh
+    default: imshow
+    doc: Type of interactive plot, imshow or pcolormesh
+    type: str
+    
   plot_interactive:
     default: True
     doc: Set on the interactive plotting. Turn it off to speed up the computation

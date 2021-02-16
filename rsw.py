@@ -194,6 +194,7 @@ class RSW(object):
             U_max = self.bulk.U_max
 
             vmax = max(c_max, U_max)
+            # vmax = c_max+U_max
             if vmax == 0.0:
                 return self.param.dt_max
             else:

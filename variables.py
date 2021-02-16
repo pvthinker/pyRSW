@@ -276,16 +276,16 @@ class Scalar(object):
                 area = grid.arrays.vol.view("i")
                 return self.view("i")/area
 
-            if self.nickname == "ux":
+            elif self.nickname == "ux":
                 return self.view("i")*grid.idx
 
-            if self.nickname == "uy":
+            elif self.nickname == "uy":
                 return self.view("i")*grid.idy
 
-            if self.nickname in ["f", "vor"]:
+            elif self.nickname in ["f", "vor"]:
                 return self.view("i")*grid.iarea
 
-            if self.nickname in ["pv"]:
+            else:
                 return self.view("i")
 
         else:
