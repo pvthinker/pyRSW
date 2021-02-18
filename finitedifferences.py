@@ -174,18 +174,22 @@ def compile(verbose=False):
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
-                        if msk[j, i]+msk[j, i-1]+msk[j-1, i]+msk[j-1, i-1] == 4:
-                            vort[k, j, i] += v[k, j, i]-v[k, j, i-1]
-                        else:
-                            vort[k, j, i] = 0.
+                        if msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1] == 4:
+                            vort[k, j, i] += v[k, j, i] - v[k, j, i-1]
+                        # elif msk[j, i]+msk[j-1, i] == 2:
+                        #     vort[k, j, i] += v[k, j, i]
+                        # elif msk[j, i-1]+msk[j-1, i-1] == 2:
+                        #     vort[k, j, i] -= v[k, j, i-1]
         elif sign == -1:
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
-                        if msk[j, i]+msk[j, i-1]+msk[j-1, i]+msk[j-1, i-1] == 4:
-                            vort[k, j, i] -= v[k, j, i]-v[k, j, i-1]
-                        else:
-                            vort[k, j, i] = 0.
+                        if msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1] == 4:
+                            vort[k, j, i] -= v[k, j, i] - v[k, j, i-1]
+                        # elif msk[j, i]+msk[j-1, i] == 2:
+                        #     vort[k, j, i] -= v[k, j, i]
+                        # elif msk[j, i-1]+msk[j-1, i-1] == 2:
+                        #     vort[k, j, i] += v[k, j, i-1]
 
     @cc.export("compke",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i4)")

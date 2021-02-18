@@ -198,6 +198,8 @@ class Grid(object):
         depending on the proximity to solid boundaries
         """
         self.set_coriolis()
+        self.arrays.f.view("j")
+        self.arrays.f.locked = True
         self.arrays.msk.view("j")
         self.arrays.msk.locked = True
         msk = self.arrays.msk.view("i")
@@ -302,12 +304,16 @@ def index_vortexforce(mskc, order):
     assert order.shape == (ny+1, nx+1)
     # derive the mask at vorticity point
     mskv = np.zeros((ny+1, nx+1), dtype=mskc.dtype)
-    for j in range(ny):
-        for i in range(nx):
-            if mskc[j, i] == 1:
-                mskv[j+1, i+1] = 1
-                mskv[j+1, i] = 1
-                mskv[j, i+1] = 1
+    # for j in range(ny):
+    #     for i in range(nx):
+    #         if mskc[j, i] == 1:
+    #             mskv[j+1, i+1] = 1
+    #             mskv[j+1, i] = 1
+    #             mskv[j, i+1] = 1
+    #             mskv[j, i] = 1
+    for j in range(1,ny):
+        for i in range(1,nx):
+            if mskc[j, i]+mskc[j-1,i]+mskc[j,i-1]+mskc[j-1,i-1] == 4:
                 mskv[j, i] = 1
 
     for j in range(ny+1):
