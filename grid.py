@@ -105,7 +105,6 @@ def set_domain_decomposition(param):
 
 class Grid(object):
     def __init__(self, param):
-
         set_domain_decomposition(param)
 
         self.arrays = variables.State(param, gridvar)
@@ -164,12 +163,12 @@ class Grid(object):
         self.xe = (np.arange(nx+1)-i0)*self.dx+x0
         self.ye = (np.arange(ny+1)-j0)*self.dy+y0
 
-        self.set_coriolis()
-        self.arrays.f.view("j")
-        self.arrays.f.locked = True
+        #self.arrays.f.view("j")
+        #self.arrays.f.locked = True
 
     def set_coriolis(self):
-        f = self.arrays.f
+        f = self.arrays.f.view("i")
+        #f[:] = self.f0*(self.dx*self.dy)#self.arrays.volv.view("i")
         f[:] = self.f0*self.arrays.volv.view("i")
 
     def sum(self, array3d):
@@ -198,6 +197,7 @@ class Grid(object):
         """ compute the order of upwind discretizations
         depending on the proximity to solid boundaries
         """
+        self.set_coriolis()
         self.arrays.msk.view("j")
         self.arrays.msk.locked = True
         msk = self.arrays.msk.view("i")

@@ -277,10 +277,12 @@ class Scalar(object):
                 return self.view("i")/area
 
             elif self.nickname == "ux":
-                return self.view("i")*grid.idx
+                idx2 = grid.arrays.invdx.view("i")
+                return self.view("i")*np.sqrt(idx2)
 
             elif self.nickname == "uy":
-                return self.view("i")*grid.idy
+                idy2 = grid.arrays.invdy.view("i")
+                return self.view("i")*np.sqrt(idy2)
 
             elif self.nickname in ["f", "vor"]:
                 return self.view("i")*grid.iarea

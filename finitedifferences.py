@@ -319,10 +319,12 @@ def compile(verbose=False):
                         #morder = Morder[i]
                         if morder == 5:
                             # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
-                            qi = weno5(q[i-1], q[i], q[i+1], q[i+2], q[i+3], 0)
+                            #qi = weno5(q[i-1], q[i], q[i+1], q[i+2], q[i+3], 0)
+                            qi = weno5(q[i+3], q[i+2], q[i+1], q[i], q[i-1], 1)
                         elif morder == 3:
                             #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
-                            qi = weno3(q[i], q[i+1], q[i+2], 0)
+                            #qi = weno3(q[i], q[i+1], q[i+2], 0)
+                            qi = weno3(q[i+2], q[i+1], q[i], 1)
                         elif morder == 1:
                             qi = q[i+1]
                         else:
@@ -391,10 +393,12 @@ def compile(verbose=False):
                         morder = 0
                     if morder == 5:
                         # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
-                        qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 0)
+                        #qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 0)
+                        qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
                     elif morder == 3:
                         #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
-                        qi = weno3(q[i-1], q[i], q[i+1], 0)
+                        # qi = weno3(q[i-1], q[i], q[i+1], 0)
+                        qi = weno3(q[i+1], q[i], q[i-1], 1)
                     elif morder == 1:
                         qi = q[i]
                     else:
