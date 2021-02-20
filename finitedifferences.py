@@ -174,18 +174,20 @@ def compile(verbose=False):
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
-                        if msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1] == 4:
+                        m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
+                        if m >= 4:
                             vort[k, j, i] += v[k, j, i] - v[k, j, i-1]
-                        # elif msk[j, i]+msk[j-1, i] == 2:
-                        #     vort[k, j, i] += v[k, j, i]
-                        # elif msk[j, i-1]+msk[j-1, i-1] == 2:
-                        #     vort[k, j, i] -= v[k, j, i-1]
+                        # elif m == 3:
+                        #     vort[k, j, i] += (v[k, j, i] - v[k, j, i-1])*0.5
         elif sign == -1:
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
-                        if msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1] == 4:
+                        m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
+                        if m >= 4:
                             vort[k, j, i] -= v[k, j, i] - v[k, j, i-1]
+                        # elif m == 3:
+                        #     vort[k, j, i] -= (v[k, j, i] - v[k, j, i-1])*0.5
                         # elif msk[j, i]+msk[j-1, i] == 2:
                         #     vort[k, j, i] -= v[k, j, i]
                         # elif msk[j, i-1]+msk[j-1, i-1] == 2:
@@ -297,13 +299,14 @@ def compile(verbose=False):
                 #     Um[i] = (U0+U1)*.25
                 #     U0 = U1
                 for i in range(nx):
-                    q[i] = vor[k, j, i]+f[j, i]
+                    q[i] = vor[k, j, i]#+f[j, i]
 
                 # interp1d_etoc(q, Um, flux, porder, morder)
                 U0 = U[k, j-1, 0] + U[k, j, 0]
                 for i in range(nx-1):
                     U1 = U[k, j-1, i+1] + U[k, j, i+1]
                     Um = (U0+U1)*.25
+                    U0 = U1
                     if Um > 0:
                         porder = order[j, i]
                         #porder = Porder[i]
@@ -316,7 +319,7 @@ def compile(verbose=False):
                         elif porder == 1:
                             qi = q[i]
                         else:
-                            qi = 0.
+                            qi = 0#q[i+1]
                     else:
                         morder = order[j, i+1]
 
@@ -332,13 +335,14 @@ def compile(verbose=False):
                         elif morder == 1:
                             qi = q[i+1]
                         else:
-                            qi = 0.
+                            qi = 0#q[i]
 
                     #flux[i] = Um[i]*qi
+                    ff = 0.5*(f[j,i]+f[j,i+1])
                     if sign == 1:
-                        dv[k, j, i] += Um*qi
+                        dv[k, j, i] += Um*(qi+ff)
                     else:
-                        dv[k, j, i] -= Um*qi
+                        dv[k, j, i] -= Um*(qi+ff)
 
                 # if sign == 1:
                 #     for i in range(nx-1):

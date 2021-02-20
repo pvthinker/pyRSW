@@ -163,13 +163,29 @@ class Grid(object):
         self.xe = (np.arange(nx+1)-i0)*self.dx+x0
         self.ye = (np.arange(ny+1)-j0)*self.dy+y0
 
-        #self.arrays.f.view("j")
+        # self.arrays.f.view("j")
         #self.arrays.f.locked = True
 
     def set_coriolis(self):
         f = self.arrays.f.view("i")
-        #f[:] = self.f0*(self.dx*self.dy)#self.arrays.volv.view("i")
+        f[:] = self.f0*(self.dx*self.dy)  # self.arrays.volv.view("i")
         f[:] = self.f0*self.arrays.volv.view("i")
+
+        mskc = self.arrays.msk.view("i")
+        ny, nx = mskc.shape
+        # derive the mask at vorticity point
+        mskv = np.zeros((ny+1, nx+1), dtype=mskc.dtype)
+        for j in range(ny):
+            for i in range(nx):
+                if mskc[j, i] == 1:
+                    mskv[j+1, i+1] += 1
+                    mskv[j+1, i] += 1
+                    mskv[j, i+1] += 1
+                    mskv[j, i] += 1
+        # for j in range(ny+1):
+        #     for i in range(nx+1):
+        #         if mskv[j, i] != 4:
+        #             f[j,i]=0
 
     def sum(self, array3d):
         """ compute the global domain sum of array3d
@@ -243,7 +259,7 @@ class Grid(object):
         return msku
 
 
-#@jit
+# @jit
 def index_tracerflux(msk, order):
     """
     Determine the order for the biased interpolation
@@ -261,7 +277,7 @@ def index_tracerflux(msk, order):
             i = i1
             if (i >= 1) and (i < nx):
                 m1 = m[i-1]+m[i]
-            elif (i==nx):
+            elif (i == nx):
                 m1 = m[i-1]
             else:
                 m1 = 0
@@ -284,7 +300,7 @@ def index_tracerflux(msk, order):
                 order[j, i1] = 0
 
 
-#@jit
+# @jit
 def index_vortexforce(mskc, order):
     """
     Determine the order for the biased interpolation
@@ -304,17 +320,18 @@ def index_vortexforce(mskc, order):
     assert order.shape == (ny+1, nx+1)
     # derive the mask at vorticity point
     mskv = np.zeros((ny+1, nx+1), dtype=mskc.dtype)
-    # for j in range(ny):
-    #     for i in range(nx):
-    #         if mskc[j, i] == 1:
-    #             mskv[j+1, i+1] = 1
-    #             mskv[j+1, i] = 1
-    #             mskv[j, i+1] = 1
+    for j in range(ny):
+        for i in range(nx):
+            if mskc[j, i] == 1:
+                mskv[j+1, i+1] += 1
+                mskv[j+1, i] += 1
+                mskv[j, i+1] += 1
+                mskv[j, i] += 1
+    # mskv[:] = 0
+    # for j in range(1,ny):
+    #     for i in range(1,nx):
+    #         if mskc[j, i]+mskc[j-1,i]+mskc[j,i-1]+mskc[j-1,i-1] >= 1:
     #             mskv[j, i] = 1
-    for j in range(1,ny):
-        for i in range(1,nx):
-            if mskc[j, i]+mskc[j-1,i]+mskc[j,i-1]+mskc[j-1,i-1] == 4:
-                mskv[j, i] = 1
 
     for j in range(ny+1):
         m = mskv[j]
@@ -324,20 +341,20 @@ def index_vortexforce(mskc, order):
                 m1 = m[i]
             else:
                 m1 = 0
-            if (i >= 1) and (i < nx):
+            if (i >= 1) and (i < nx) and (m1 == 4):
                 m3 = m[i-1]+m[i]+m[i+1]
             else:
                 m3 = 0
-            if (i >= 2) and (i < nx-1):
+            if (i >= 2) and (i < nx-1) and (m3 == 12):
                 m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
             else:
                 m5 = 0
 
-            if m5 == 5:
+            if m5 > 0:
                 order[j, i1] = 5
-            elif m3 == 3:
+            elif m3 > 0:
                 order[j, i1] = 3
-            elif m1 == 1:
+            elif m1 > 0:
                 order[j, i1] = 1
             else:
                 order[j, i1] = 0
