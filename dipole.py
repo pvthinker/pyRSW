@@ -11,6 +11,7 @@ import numpy as np
 from parameters import Param
 from grid import Grid
 from rsw import RSW
+from numba import jit
 
 param = Param()
 
@@ -23,20 +24,20 @@ param.Ly = 1.
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.2
-param.dt = 1e-2/2
+param.dt = 1e-2/4
 param.tend = 30#100*param.dt
-param.plotvar = "vor"
-param.freq_plot = 50
-param.freq_his = 0.2#4*param.dt
+param.plotvar = "h"
+param.freq_plot = 100
+param.freq_his = 0.05
 param.plot_interactive = True
 param.colorscheme = "auto"
 param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = False
 param.linear = False
 param.timestepping = "RK3_SSP"
-param.f0 = 5.
+param.f0 = 10.
 param.noslip = False
-param.var_to_save = ["h", "pv", "u", "vor"]
+param.var_to_save = ["h", "vor", "pv"]
 
 
 def vortex(x1, y1, **kwargs):
@@ -62,8 +63,13 @@ def vortex2(xx, yy, **kwargs):
     d2 = (xx-x0)**2*ratio + (yy-y0)**2
     if vtype == "cosine":
         d0 = np.sqrt(d2)
-        m = np.cos(d0/d*(np.pi/2))
-        m[d0>d] = 0.
+        m = np.zeros_like(d0)
+        m[d0<=d] = 1
+        m[d0>d] = -1
+        d2 = (xx-x0)**2 + (yy-y0)**2
+        d0 = np.sqrt(d2)
+        m[d0<0.1] = -1
+
     else:
         m = np.exp(-d2/(2*d**2))-0.7
     return m
@@ -207,14 +213,122 @@ def compute_lame(grid, direc, fbry, **kwargs):
                 #
                 idx2[j,i] = 1./np.sqrt((area[j,i-1]*area[j,i]))
 
-kwargs = {"ratio": 0.25, "x0":param.Lx*0.5, "y0":param.Ly*0.5, "d":param.Ly*0.5, "vtype": "cosine"}
+kwargs = {"ratio": 0.25, "x0":param.Lx*0.5, "y0":param.Ly*0.5, "d":param.Ly*0.5-grid.dy, "vtype": "cosine"}
+
 
 def set_mask(grid, fbry, **kwargs):
-    xx, yy = grid.xc, grid.yc#np.meshgrid(grid.xc, grid.yc)
-    m = fbry(xx, yy, **kwargs)
+    xc, yc = grid.xc, grid.yc
+    xe, ye = grid.xe, grid.ye
+    m = fbry(xe, ye, **kwargs)
+
     msk = grid.arrays.msk.view("i")
-    msk[:] = m > 0.
+    area = grid.arrays.vol.view("i")
+    areav = grid.arrays.volv.view("i")    
+    idx2 = grid.arrays.invdx.view("i")
+    idy2 = grid.arrays.invdy.view("i")
+    msk[:] = 0
+    area[:] = 0.
+    areav[:] = 0.
+
+    ny, nx = msk.shape
+
+    partial = np.zeros_like(msk)
     
+    npergridcell = 20
+    x1 = (np.arange(npergridcell)+0.5)/npergridcell*grid.dx
+    y1 = (np.arange(npergridcell)+0.5)/npergridcell*grid.dy
+    xx, yy = np.meshgrid(x1, y1)
+    cff = grid.dx*grid.dy    
+    # define the mask
+    for j in range(ny):
+        for i in range(nx):
+            partial[j,i] = ( (m[j,i]>=0)*1
+                        +(m[j+1,i]>=0)*1
+                        +(m[j,i+1]>=0)*1
+                        +(m[j+1,i+1]>=0)*1 )
+            if partial[j,i]>0:
+                msk[j,i] = 1
+                if partial[j,i] == 4:
+                    area[j,i] = cff
+                else:
+                    val = fbry(xx+xe[j,i], yy+ye[j,i], **kwargs)
+                    fraction = np.count_nonzero(val)/npergridcell**2
+                    if fraction>0.:
+                        area[j,i] = cff*fraction
+                    else:
+                        area[j,i] = cff
+                        msk[j,i] = 0
+                        partial[j,i] = 0
+            else:
+                area[j,i] = cff
+    # define mask a vertices
+    npergridcell = 10
+    x1 = (np.arange(npergridcell)+0.5)/npergridcell*grid.dx*0.5
+    y1 = (np.arange(npergridcell)+0.5)/npergridcell*grid.dy*0.5
+    xx, yy = np.meshgrid(x1, y1)
+    areav[:] = 0.
+    cff = grid.dx*grid.dy*0.25
+    for j in range(ny):
+        for i in range(nx):
+            a = 0.25*area[j,i]
+            #a = cff
+            if partial[j,i]>0:
+                areav[j,i] += a
+                areav[j,i+1] += a
+                areav[j+1,i] += a
+                areav[j+1,i+1] += a
+            elif partial[j,i]<0:
+                val = fbry(xc[j,i]-xx, yc[j,i]-yy, **kwargs)
+                fraction = np.count_nonzero(val)/npergridcell**2
+                if fraction>0.:
+                    areav[j,i] += cff*fraction
+
+                val = fbry(xc[j,i]+xx, yc[j,i]-yy, **kwargs)
+                fraction = np.count_nonzero(val)/npergridcell**2
+                if fraction>0.:
+                    areav[j,i+1] += cff*fraction
+
+                val = fbry(xc[j,i]-xx, yc[j,i]+yy, **kwargs)
+                fraction = np.count_nonzero(val)/npergridcell**2
+                if fraction>0.:
+                    areav[j+1,i] += cff*fraction
+                
+                val = fbry(xc[j,i]+xx, yc[j,i]+yy, **kwargs)
+                fraction = np.count_nonzero(val)/npergridcell**2
+                if fraction>0.:
+                    areav[j+1,i+1] += cff*fraction
+                
+    # define lengths at U points
+    cff = 1./grid.dx**2
+    x1 = np.zeros((npergridcell))
+    y1 = (np.arange(npergridcell)+0.5)/npergridcell*grid.dy
+    for j in range(ny):
+        for i in range(1, nx-1):
+            s= partial[j,i-1]+partial[j,i]
+            if s == 4:
+                idx2[j,i] = cff
+            elif (partial[j,i-1]>0) and (partial[j,i]>0):
+                idx2[j,i] = grid.dy**2/(area[j,i-1]*area[j,i])
+                # val = fbry(x1+xe[j-1,i], y1+ye[j-1,i], **kwargs)
+                # fraction = np.count_nonzero(val>0)/npergridcell
+                # idx2[j,i] = cff#(grid.dy*fraction)**2/(area[j,i-1]*area[j,i])
+
+    # define lengths at V points
+    cff = 1./grid.dy**2
+    x1 = (np.arange(npergridcell)+0.5)/npergridcell*grid.dx
+    y1 = np.zeros((npergridcell))
+    for j in range(1, ny-1):
+        for i in range(nx):
+            s= partial[j-1,i]+partial[j,i]
+            if s == 4:
+                idy2[j,i] = cff
+            elif (partial[j-1,i]>0) and (partial[j,i]>0):
+                idy2[j,i] = grid.dx**2/(area[j-1,i]*area[j,i])
+                # val = fbry(x1+xe[j,i-1], y1+ye[j,i-1], **kwargs)
+                # fraction = np.count_nonzero(val>0)/npergridcell
+                # idy2[j,i] = cff#(grid.dx*fraction)**2/(area[j-1,i]*area[j,i])
+
+     
 #m = vortex((xc-param.Lx/2)*.9, yc-0.2, 0., param.Ly/2, param.Lx/2)
 #m = vortex(xc, yc, **kwargs)
 #msk[:] = m > 0
@@ -241,9 +355,9 @@ grid.ye = yy
 print(grid.xe.shape, grid.ye.shape)
 if True:
     set_mask(grid, fbry, **kwargs)
-    compute_area(grid, fbry, **kwargs)
-    compute_lame(grid, "i", fbry, **kwargs)
-    compute_lame(grid, "j", fbry, **kwargs)
+    #compute_area(grid, fbry, **kwargs)
+    #compute_lame(grid, "i", fbry, **kwargs)
+    #compute_lame(grid, "j", fbry, **kwargs)
 
 else:
     area = grid.arrays.vol.view("i")
@@ -276,7 +390,7 @@ f = param.f0
 d = 0.1  # vortex radius
 dsep = -d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.2
+amp = +0.1
 vtype = "gaussian"
 x0 = param.Lx/2
 y0 = 2*param.Ly/3
@@ -329,8 +443,8 @@ v[:] = 0.
 # then take the rotated gradient of it
 grad(hF, v, u)
 #f=1e1/4
-u[:] *= -(g/param.f0)
-v[:] *= +(g/param.f0)
+# u[:] *= -(g/param.f0)
+# v[:] *= +(g/param.f0)
 
 
 u = model.state.ux.view("i")
@@ -344,7 +458,7 @@ mskv = grid.mskv()
 for k in range(param.nz):
     u[k] *= msku
     v[k] *= mskv
-#    h[k] *= msk
+    h[k][msk==0] = param.H*area[msk==0]
 
 hF[:] = 0.
 model.run()
