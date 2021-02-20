@@ -169,7 +169,7 @@ class Grid(object):
     def set_coriolis(self):
         f = self.arrays.f.view("i")
         f[:] = self.f0*(self.dx*self.dy)  # self.arrays.volv.view("i")
-        f[:] = self.f0*self.arrays.volv.view("i")
+        #f[:] = self.f0*self.arrays.volv.view("i")
 
         mskc = self.arrays.msk.view("i")
         ny, nx = mskc.shape
