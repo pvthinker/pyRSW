@@ -7,12 +7,12 @@ from variables import Scalar
 import topology as topo
 import variables
 import coordinates
-try:
-    import mindexing
-except:
-    import mask_stencils as ms
-    ms.compile()
-    import mindexing
+# try:
+#     import mindexing
+# except:
+#     import mask_stencils as ms
+#     ms.compile()
+#     import mindexing
 from numba import jit
 
 gridvar = {
@@ -304,12 +304,16 @@ class Grid(object):
                         idy2[j, i] = dx2/(area[j-1, i]*area[j, i])
 
     def finalize(self):
-        """ compute the order of upwind discretizations
+        """
+        1/ determine the mask and correct the areas if partialcase
+
+        2/ compute the order of upwind discretizations
         depending on the proximity to solid boundaries
         """
         if self.partialcell:
-            msg = "You forgot to set grid.boundary = .."
-            assert hasattr(self, "boundary"), msg
+            msg = ["", "You forgot to set grid.boundary = ...",
+                   "Look at the experiment dipole.py for an example"]
+            assert hasattr(self, "boundary"), "\n".join(msg)
             fbry = self.boundary["fbry"]
             kwargs = self.boundary["kwargs"]
             self.set_mask(fbry, **kwargs)
