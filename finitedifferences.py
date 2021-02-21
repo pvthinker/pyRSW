@@ -167,31 +167,47 @@ def compile(verbose=False):
                     v0 = v1
 
     @cc.export("curl",
-               "void(f8[:, :, :], f8[:, :, :], i1[:, :], i4)")
-    def curl(v, vort, msk, sign):
+               "void(f8[:, :, :], f8[:, :, :], i1[:, :], i4, i4)")
+    def curl(v, vort, msk, sign, m0):
         shape = v.shape
         if sign == 1:
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
                         m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
-                        if m >= 4:
+                        if m >= m0:
                             vort[k, j, i] += v[k, j, i] - v[k, j, i-1]
-                        # elif m == 3:
-                        #     vort[k, j, i] += (v[k, j, i] - v[k, j, i-1])*0.5
+
         elif sign == -1:
             for k in range(shape[0]):
                 for j in range(1, shape[1]-1):
                     for i in range(1, shape[2]):
                         m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
-                        if m >= 4:
+                        if m >= m0:
                             vort[k, j, i] -= v[k, j, i] - v[k, j, i-1]
-                        # elif m == 3:
-                        #     vort[k, j, i] -= (v[k, j, i] - v[k, j, i-1])*0.5
-                        # elif msk[j, i]+msk[j-1, i] == 2:
-                        #     vort[k, j, i] -= v[k, j, i]
-                        # elif msk[j, i-1]+msk[j-1, i-1] == 2:
-                        #     vort[k, j, i] += v[k, j, i-1]
+
+    @cc.export("totalcurl",
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
+    def totalcurl(u, v, vort, msk):
+        """ curl computation with both u and v
+
+        all arrays are in i convention
+
+        this is faster than splitting the directions
+
+        BUT: j=0 and j=ny, i=0 and i=nx are not set, this is a problem with the noslip boundary condition
+        """
+        shape = u.shape
+        nz, ny, nx = shape
+        nx -= 1
+        for k in range(nz):
+            for j in range(1, ny):
+                for i in range(1, nx):
+                    m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
+                    if m >= 4:
+                        vort[k, j, i] = (v[k, j, i] - v[k, j, i-1]
+                                         -u[k, j, i] + u[k, j-1, i])
+
 
     @cc.export("compke",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i4)")

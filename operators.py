@@ -1,6 +1,7 @@
 import finitediff as fd
 import numpy as np
 
+
 def comppv(state, grid):
     vor = state.vor.view("i")
     f = grid.arrays.f.view("i")
@@ -17,18 +18,29 @@ def comppv_c(state):
     fd.comppv_c(vor, f, h, pv)
 
 
-def vorticity(state, grid):
-    # + dv/dx
-    v = state.uy.view("i")
-    vor = state.vor.view("i")
-    msk = grid.arrays.msk.view("i")
-    fd.curl(v, vor, msk, 1)
+def vorticity(state, grid, noslip):
+    if True:
+        if noslip:
+            m0 = 1
+        else:
+            m0 = 4
+        # + dv/dx
+        v = state.uy.view("i")
+        vor = state.vor.view("i")
+        msk = grid.arrays.msk.view("i")
+        fd.curl(v, vor, msk, 1, m0)
 
-    # - du/dy
-    u = state.ux.view("j")
-    vor = state.vor.view("j")
-    msk = grid.arrays.msk.view("j")
-    fd.curl(u, vor, msk, -1)
+        # - du/dy
+        u = state.ux.view("j")
+        vor = state.vor.view("j")
+        msk = grid.arrays.msk.view("j")
+        fd.curl(u, vor, msk, -1, m0)
+    else:
+        u = state.ux.view("i")
+        v = state.uy.view("i")
+        vor = state.vor.view("i")
+        msk = grid.arrays.msk.view("i")
+        fd.totalcurl(u, v, vor, msk)
 
 
 def kinenergy(state, param):

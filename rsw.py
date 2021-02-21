@@ -151,13 +151,13 @@ class RSW(object):
 
         state.vor[:] = 0.
         if not self.param.linear:
-            operators.vorticity(state, self.grid)
+            operators.vorticity(state, self.grid, self.param.noslip)
 
             operators.kinenergy(state, self.param)
 
         self.applybc(state.vor)
-        if self.param.noslip:
-            self.applynoslip(state)
+        # if self.param.noslip:
+        #     self.applynoslip(state)
         operators.montgomery(state, self.grid, self.param)
 
     def diagnose_supplementary(self, state):
