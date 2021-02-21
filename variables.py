@@ -285,7 +285,8 @@ class Scalar(object):
                 return self.view("i")*np.sqrt(idy2)
 
             elif self.nickname in ["f", "vor"]:
-                return self.view("i")*grid.iarea
+                area = grid.arrays.volv.view("i")
+                return self.view("i")/area
 
             else:
                 return self.view("i")

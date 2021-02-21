@@ -14,6 +14,17 @@ space:
     doc: Domain length along y
     type: float
 
+  coordinates:
+    default: cartesian
+    doc: type of coordinates
+    avail: cartesian, cylindrical
+    type: str
+
+  partialcell:
+    default: False
+    doc: Activate the partial cell
+    type: bool
+
   geometry:
     avail: closed, perio_x, perio_y, perio_xy
     default: closed
