@@ -123,7 +123,7 @@ class RSW(object):
     def forward(self):
         self.timescheme.forward(self.state, self.t, self.dt)
         h = self.state.h[:]
-        blowup = any(np.isnan(h.flat))
+        blowup = any(np.isnan(h.flat)) or any(h.flat < 0)
         return blowup
 
     def rhs(self, state, t, dstate, last=False):
