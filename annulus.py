@@ -13,7 +13,7 @@ param = Param()
 reso = 2
 param.expname = "annulus"
 param.nz = 1
-param.ny = 64*reso
+param.ny = 128*reso
 param.nx = 128*reso
 param.Lx = 2.
 param.Ly = 1.
@@ -21,10 +21,10 @@ param.auto_dt = False
 param.geometry = "perio_x"
 param.coordinates = "cylindrical"
 param.cfl = 0.2
-param.dt = 1e-2/reso
-param.tend = 20  # 0*param.dt
+param.dt = 0.8e-2/reso
+param.tend = 5  # 0*param.dt
 param.plotvar = "h"
-param.freq_plot = 10
+param.freq_plot = 50
 param.freq_his = 0.1
 param.plot_interactive = True
 param.plot_type = "pcolormesh"
@@ -33,7 +33,7 @@ param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = False
 param.timestepping = "RK3_SSP"
 param.f0 = 5.
-param.var_to_save = ["h", "pv"]
+param.var_to_save = ["h", "vor"]
 
 
 def vortex(xx, yy, **kwargs):
@@ -88,11 +88,9 @@ d = 0.1  # vortex radius
 dsep = -d*1.1  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
 amp = 0.1
-vtype = "gaussian"
-x0 = param.Lx/2
-y0 = param.Ly/2
 
-y0 = 0.
+
+y0 = 0.5
 sigma = 0.08
 
 h[0] = h0-amp*(0.5+0.5*np.tanh((yc-y0)/sigma))
