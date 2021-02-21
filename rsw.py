@@ -113,7 +113,8 @@ class RSW(object):
 
             walltime = time.time()
             perf = (walltime-walltime0)/ngridpoints
-            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} his={nexthistime:.2f}/{tend:.2f} perf={perf:.2e}s"
+            tu = self.param.timeunit
+            time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e}s"
             print(time_string, end="")
 
         if self.param.plot_interactive:

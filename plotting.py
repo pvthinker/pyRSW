@@ -16,6 +16,7 @@ class Figure(object):
         self.param = param
         self.grid = grid
         Lx, Ly = param.Lx, param.Ly
+        self.tu = self.param.timeunit
         self.plotvar = param.plotvar
         var = state.get(self.plotvar)
         z2d = var.getproperunits(self.grid)[-1]
@@ -32,7 +33,7 @@ class Figure(object):
             raise ValueError
 
         plt.colorbar(self.im)
-        self.ax1.set_title('%s / t=%.2f' % (var.name, time))
+        self.ax1.set_title('%s / t=%.2f' % (var.name, time/self.tu))
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
         self.ax1.text(0.02*Lx, 0.95*Ly, 'Rd=%.2f' %
@@ -65,7 +66,7 @@ class Figure(object):
         else:
             raise ValueError('colorscheme should be "imposed" or "auto"')
 
-        self.ax1.set_title('%s / t=%.2f' % (self.plotvar, time))
+        self.ax1.set_title('%s / t=%.2f' % (self.plotvar, time/self.tu))
         self.im.set_clim(vmin=vmin, vmax=vmax)
         self.fig.canvas.draw()
         if self.param.generate_mp4:

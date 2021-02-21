@@ -59,6 +59,46 @@ class Cylindrical():
         return (self.r(j, i)*self.dr*self.dtheta)
 
 
+class Spherical():
+    """
+    theta : latitude
+    phi : longitude
+    """
+
+    def __init__(self, param):
+        self.param = param
+        self.dtheta = (param.theta[1]-param.theta[0]) / (param.npy*param.ny)
+        self.dphi = (param.phi[1]-param.phi[0]) / (param.npx*param.nx)
+        self.a = param.sphere_radius
+        self.i0 = param['loc'][1]
+        self.j0 = param['loc'][0]
+
+    def theta(self, j, i):
+        """ theta """
+        return index(j, i, "j")*self.dtheta+self.param.theta[0]
+
+    def phi(self, j, i):
+        """ phi """
+        return index(j, i, "i")*self.dphi+self.param.phi[0]
+
+    def x(self, j, i):
+        return self.a*np.cos(self.theta(j, i))*self.phi(j, i)
+
+    def y(self, j, i):
+        return self.a*self.theta(j, i)
+
+    def idx2(self, j, i):
+        """ arc length along phi """
+        return 1./(self.a*np.cos(self.theta(j, i))*self.dphi)**2
+
+    def idy2(self, j, i):
+        """ arc length along theta """
+        return ones(j, i)/(self.a*self.dtheta)**2
+
+    def area(self, j, i):
+        return (self.a**2*np.cos(self.theta(j, i))*self.dtheta*self.dphi)
+
+
 def index(j, i, direc):
     if isinstance(i, int):
         nx = 1

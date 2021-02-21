@@ -139,8 +139,13 @@ class Grid(object):
 
             self.dx = self.coord.dx
             self.dy = self.coord.dy
+
         elif param.coordinates == "cylindrical":
             self.coord = coordinates.Cylindrical(param)
+
+        elif param.coordinates == "spherical":
+            self.coord = coordinates.Spherical(param)
+
         else:
             raise ValueError
 
@@ -168,7 +173,12 @@ class Grid(object):
 
         # set Coriolis
         f = self.arrays.f.view("i")
-        f[:] = self.f0*areav
+        if param.coordinates == "spherical":
+            Omega = param.Omega
+            theta = self.coord.theta(self.je, self.ie)
+            f[:] = 2*Omega*np.sin(theta)*areav
+        else:
+            f[:] = self.f0*areav
 
     def sum(self, array3d):
         """ compute the global domain sum of array3d
