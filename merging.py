@@ -9,36 +9,42 @@ from rsw import RSW
 
 param = Param()
 
+reso = 2
+param.expname = "merging"
 param.nz = 1
-param.ny = 64
-param.nx = 64
+param.ny = 64*reso
+param.nx = 64*reso
 param.Lx = 1.
 param.Ly = 1.
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.25
-param.dt = 1e-2*0.8
-param.tend = 25
-param.plotvar = "vor"
-param.freq_plot = 8
-param.freq_his = 0.25
-param.plot_interactive = False
+param.dt = 0.8e-2/reso
+param.tend = 5
+param.plotvar = "pv"
+param.freq_plot = 20
+param.freq_his = 0.1
+param.plot_interactive = True
 param.colorscheme = "auto"
 param.cax = np.asarray([-2e-4, 12e-4])/2
-param.generate_mp4 = True
-param.linear = False
+param.generate_mp4 = False
 param.timestepping = "RK3_SSP"
 param.f0 = 5.
+param.var_to_save = ["h", "vor", "pv"]
+
 
 grid = Grid(param)
+
+
+grid.finalize()
 
 model = RSW(param, grid)
 
 xc, yc = grid.xc, grid.yc
 xe, ye = grid.xe, grid.ye
+area = grid.arrays.vol.view("i")
 
-h = model.state.h
-hb = grid.arrays.hb
+h = model.state.h.view("i")
 u = model.state.ux
 v = model.state.uy
 
@@ -49,14 +55,13 @@ f = param.f0
 # setup initial conditions
 
 d = 0.07  # vortex radius
-dsep = d*2  # half distance between the two vortices
+dsep = d*1.4  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = -0.3
-hmin = 1e-3
+amp = 0.2
 x0 = 0.5
 
-def vortex(x1, y1, x0, y0, d):
-    xx, yy = np.meshgrid(x1, y1)
+
+def vortex(xx, yy, x0, y0, d):
     d2 = (xx-x0)**2 + (yy-y0)**2
     return np.exp(-d2/(2*d**2))
 
@@ -65,6 +70,8 @@ h[0] = h0
 h[0] += amp*vortex(xc, yc, x0, 0.5-dsep, d)
 h[0] += amp*vortex(xc, yc, x0, 0.5+dsep, d)
 
+# convert height "h" to a volume form, i.e. multiply with the cell area
+h[0] *= area
 # topography
 #hb[:] = 0.4*vortex(xc, yc, x0+dsep, 0.5, d)
 
@@ -76,10 +83,8 @@ h[0] += amp*vortex(xc, yc, x0, 0.5+dsep, d)
 # once the model is launched
 hF = model.state.vor
 hF[0] = h0
-#hF[0] += amp*dambreak(xe, ye, 0.5, 0.5-dsep, d)
 hF[0] += amp*vortex(xe, ye, x0, 0.5-dsep, d)
 hF[0] += amp*vortex(xe, ye, x0, 0.5+dsep, d)
-#hF[0] = np.maximum(hmin, hF[0])
 
 
 def grad(phi, dphidx, dphidy):
@@ -90,11 +95,26 @@ def grad(phi, dphidx, dphidy):
     dphidy.setview("j")
     dphidy[:] = phi[..., 1:]-phi[..., :-1]
 
+
 u[:] = 0.
 v[:] = 0.
 # then take the rotated gradient of it
-# grad(hF, v, u)
-# u[:] *= -(g/f)
-# v[:] *= +(g/f)
+grad(hF, v, u)
+u[:] *= -(g/param.f0)
+v[:] *= +(g/param.f0)
+
+u = model.state.ux.view("i")
+v = model.state.uy.view("j")
+
+msk = grid.arrays.msk.view("i")
+h = model.state.h.view("i")
+msku = grid.msku()
+mskv = grid.mskv()
+
+for k in range(param.nz):
+    u[k] *= msku
+    v[k] *= mskv
+    h[k][msk == 0] = param.H*area[msk == 0]
+
 hF[:] = 0.
 model.run()
