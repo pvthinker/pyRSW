@@ -3,6 +3,7 @@ import sys
 import signal
 import variables
 from bulk import Bulk
+import time
 
 # if these modules aren't yet compiled, do it
 try:
@@ -76,7 +77,12 @@ class RSW(object):
         self.ok = self.t < tend
         self.termination_status = "Job completed as expected"
 
+        ngridpoints = self.param.nx*self.param.ny*self.param.nz
+        walltime = time.time()
+
         while self.ok:
+            walltime0 = walltime
+
             self.dt = self.compute_dt()
             blowup = self.forward()
             if blowup:
@@ -105,7 +111,9 @@ class RSW(object):
                 self.io.dohis(self.state, self.t)
                 nexthistime = self.io.kt * self.param.freq_his
 
-            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} his={nexthistime:.2f}/{tend:.2f}"
+            walltime = time.time()
+            perf = (walltime-walltime0)/ngridpoints
+            time_string = f"\r n={kite:3d} t={self.t:.2f} dt={self.dt:.4f} his={nexthistime:.2f}/{tend:.2f} perf={perf:.2e}s"
             print(time_string, end="")
 
         if self.param.plot_interactive:
