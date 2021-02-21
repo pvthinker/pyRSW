@@ -272,7 +272,7 @@ class Scalar(object):
 
     def getproperunits(self, grid):
         if self.param.physicalunits:
-            if self.nickname == "h":
+            if self.nickname in ["h", "hb"]:
                 area = grid.arrays.vol.view("i")
                 return self.view("i")/area
 
