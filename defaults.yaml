@@ -162,7 +162,7 @@ physics:
     type: list
 
   linear:
-    default: True
+    default: False
     doc: If True use the linearized equations
     type: bool
 
