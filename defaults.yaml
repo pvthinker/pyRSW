@@ -14,6 +14,16 @@ space:
     doc: Domain length along y
     type: float
 
+  theta:
+    default: [0, 6.283185307179586]
+    doc: Range of azymuth for cylindrical coordinates
+    type: list
+
+  r:
+    default: [0.5, 2]
+    doc: Range of radius for cylindrical coordinates
+    type: list
+
   coordinates:
     default: cartesian
     doc: type of coordinates

@@ -139,32 +139,36 @@ class Grid(object):
 
             self.dx = self.coord.dx
             self.dy = self.coord.dy
+        elif param.coordinates == "cylindrical":
+            self.coord = coordinates.Cylindrical(param)
+        else:
+            raise ValueError
 
-            self.ic = (0.5+np.arange(nx)-i0)
-            self.jc = (0.5+np.arange(ny)-j0)
-            self.ie = (np.arange(nx+1)-i0)
-            self.je = (np.arange(ny+1)-j0)
+        self.ic = (0.5+np.arange(nx)-i0)
+        self.jc = (0.5+np.arange(ny)-j0)
+        self.ie = (np.arange(nx+1)-i0)
+        self.je = (np.arange(ny+1)-j0)
 
-            self.xc = self.coord.x(self.jc, self.ic)
-            self.yc = self.coord.y(self.jc, self.ic)
-            self.xe = self.coord.x(self.je, self.ie)
-            self.ye = self.coord.y(self.je, self.ie)
+        self.xc = self.coord.x(self.jc, self.ic)
+        self.yc = self.coord.y(self.jc, self.ic)
+        self.xe = self.coord.x(self.je, self.ie)
+        self.ye = self.coord.y(self.je, self.ie)
 
-            area = self.arrays.vol.view("i")
-            area[:] = self.coord.area(self.jc, self.ic)
+        area = self.arrays.vol.view("i")
+        area[:] = self.coord.area(self.jc, self.ic)
 
-            areav = self.arrays.volv.view("i")
-            areav[:] = self.coord.area(self.je, self.ie)
+        areav = self.arrays.volv.view("i")
+        areav[:] = self.coord.area(self.je, self.ie)
 
-            idx2 = self.arrays.invdx.view("i")
-            idx2[:] = self.coord.idx2(self.jc, self.ie)
+        idx2 = self.arrays.invdx.view("i")
+        idx2[:] = self.coord.idx2(self.jc, self.ie)
 
-            idy2 = self.arrays.invdy.view("i")
-            idy2[:] = self.coord.idy2(self.je, self.ic)
+        idy2 = self.arrays.invdy.view("i")
+        idy2[:] = self.coord.idy2(self.je, self.ic)
 
-            # set Coriolis
-            f = self.arrays.f.view("i")
-            f[:] = self.f0*areav
+        # set Coriolis
+        f = self.arrays.f.view("i")
+        f[:] = self.f0*areav
 
     def sum(self, array3d):
         """ compute the global domain sum of array3d
