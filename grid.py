@@ -176,7 +176,11 @@ class Grid(object):
         if param.coordinates == "spherical":
             Omega = param.Omega
             theta = self.coord.theta(self.je, self.ie)
-            f[:] = 2*Omega*np.sin(theta)*areav
+            phi = self.coord.phi(self.je, self.ie)
+            theta_shift = param.lat_pole_shift
+            f[:] = 2*Omega*(np.sin(theta)*np.cos(theta_shift)
+                            -np.cos(phi)*np.cos(theta)*np.sin(theta_shift))
+            f[:] *= areav
         else:
             f[:] = self.f0*areav
 

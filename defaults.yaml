@@ -16,8 +16,13 @@ space:
 
     theta:
         default: [0, 6.283185307179586]
-        doc: Range of azymuth for cylindrical coordinates
+        doc: Range of azymuth for cylindrical coordinates. Range of latitude for spherical coordinates
         type: list
+
+    lat_pole_shift:
+        default: 0.
+        doc: Meridional angle shift for the North Pole. Controls the Coriolis parameter
+        type: float
 
     r:
         default: [0.5, 2]
