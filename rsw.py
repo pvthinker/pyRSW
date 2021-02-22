@@ -143,6 +143,9 @@ class RSW(object):
         operators.vortex_force(state, dstate, self.param, self.grid)
         # bernoulli
         operators.bernoulli(state, dstate, self.param, self.grid)
+        #
+        if self.param.forcing and last:
+            self.forcing.add(state, dstate, t)
 
     def diagnose_var(self, state):
         self.applybc(state.h)

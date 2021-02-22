@@ -34,10 +34,10 @@ alpha = 0.
 
 param = Param()
 
-reso = 4
+reso = 8
 param.expname = "test5"
 param.phi = [0, 2*pi]
-param.theta = [-pi/6, 0.8*pi/2]
+param.theta = [-0.8*pi/2, 0.8*pi/2]
 param.nz = 1
 param.ny = 25*reso
 param.nx = 50*reso
@@ -45,10 +45,10 @@ param.geometry = "perio_x"
 param.coordinates = "spherical"
 param.timeunit = day
 param.dt = day/100/reso
-param.tend = 15*day  # 100*param.dt
-param.plotvar = "pv"
+param.tend = 50*day  # 100*param.dt
+param.plotvar = "h"
 param.freq_plot = 100
-param.freq_his = day/4
+param.freq_his = day
 param.plot_interactive = True
 param.colorscheme = "auto"
 param.timestepping = "RK3_SSP"
