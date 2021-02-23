@@ -36,6 +36,7 @@ class RSW(object):
         self.fix_density()
         # self.set_coriolis()
         self.bulk = Bulk(param, grid)
+        self.diags = {}
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
@@ -64,11 +65,17 @@ class RSW(object):
         self.diagnose_var(self.state)
         self.diagnose_supplementary(self.state)
 
+        self.bulk.compute(self.state, self.diags, fulldiag=True)
+
         signal.signal(signal.SIGINT, self.signal_handler)
 
         self.io.create_history_file(self.state)
         self.io.dohis(self.state, self.t)
         nexthistime = self.io.kt * self.param.freq_his
+
+        self.io.create_diagnostic_file(self.diags)
+        self.io.dodiags(self.diags, self.t, kite)
+        nextdiagtime = self.io.ktdiag * self.param.freq_diag
 
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.grid, self.state, self.t)
@@ -79,7 +86,6 @@ class RSW(object):
 
         ngridpoints = self.param.nx*self.param.ny*self.param.nz
         walltime = time.time()
-
         while self.ok:
             walltime0 = walltime
 
@@ -104,16 +110,25 @@ class RSW(object):
 
                 fig.update(self.t, self.state)
 
-            self.bulk.compute(self.state)
+            timetohis = (self.t >= nexthistime)
+            timetodiag = (self.t >= nextdiagtime)
 
-            if self.t >= nexthistime:
+            if timetohis or timetodiag:
                 self.diagnose_supplementary(self.state)
+
+            if timetohis:
                 self.io.dohis(self.state, self.t)
                 nexthistime = self.io.kt * self.param.freq_his
+
+            if timetodiag:
+                self.bulk.compute(self.state, self.diags, fulldiag=True)
+                self.io.dodiags(self.diags, self.t, kite)
+                nextdiagtime = self.io.ktdiag * self.param.freq_diag
 
             walltime = time.time()
             perf = (walltime-walltime0)/ngridpoints
             tu = self.param.timeunit
+
             time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e}s"
             print(time_string, end="")
 
@@ -165,7 +180,7 @@ class RSW(object):
         operators.montgomery(state, self.grid, self.param)
 
     def diagnose_supplementary(self, state):
-        operators.comppv(state, self.grid)
+        operators.comppv_c(state, self.grid)
 
     def applynoslip(self, state):
         if self.param.geometry == "closed":
@@ -202,6 +217,9 @@ class RSW(object):
     def compute_dt(self):
 
         if self.param.auto_dt:
+
+            self.bulk.compute(self.state, self.diags)
+
             c_max = np.sqrt(self.param.g*self.bulk.H_max)
             U_max = self.bulk.U_max
 

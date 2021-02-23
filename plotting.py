@@ -36,11 +36,14 @@ class Figure(object):
         self.ax1.set_title('%s / t=%.2f' % (var.name, time/self.tu))
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
+        H = param.H
+        if isinstance(H, list):
+            H = sum(H)
         self.ax1.text(0.02*Lx, 0.95*Ly, 'Rd=%.2f' %
-                      (np.sqrt(param.g*param.H)/param.f0))
+                      (np.sqrt(param.g*H)/param.f0))
         #self.ax1.text(0.02*Lx, 0.9*Ly, 'Ro=%.2f' % rossby)
         self.ax1.text(0.02*Lx, 0.85*Ly,
-                      r'$\sqrt{gH}$=%.2f' % (np.sqrt(param.g*param.H)))
+                      r'$\sqrt{gH}$=%.2f' % (np.sqrt(param.g*H)))
         self.fig.show()
         self.fig.canvas.draw()
         if param.generate_mp4:

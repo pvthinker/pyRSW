@@ -118,13 +118,13 @@ output:
         type: bool
 
     freq_diag:
-        default: 1.
-        doc: Interval of time between two output in the diag file
+        default: 0.05
+        doc: Interval of time between two outputs in the diag file
         type: float
 
     freq_his:
         default: 10.
-        doc: Interval of time between two output in the history file
+        doc: Interval of time between two outputs in the history file
         type: float
 
     nprint:

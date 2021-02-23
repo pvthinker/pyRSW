@@ -37,7 +37,7 @@ modelvar = {
         "constant": False,
         "prognostic": False},
     "pv": {
-        "type": "vorticity",
+        "type": "scalar",
         "name": "potential vorticity",
         "dimensions": ["z", "y", "x"],
         "unit": "L.T^-1",

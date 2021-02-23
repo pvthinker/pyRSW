@@ -22,7 +22,9 @@ class Ncio(object):
         else:
             raise ValueError(f"{param.filemode} is not yet implemented")
         hisname = f"history_{param.myrank:02}.nc"
+        diagname = f"diags.nc"
         self.hist_path = os.path.join(out_dir, hisname)
+        self.diag_path = os.path.join(out_dir, diagname)
         self.script_path = os.path.join(out_dir, f"{expname}.py")
         self.output_directory = out_dir
         # Create the output directory if necessary
@@ -39,6 +41,18 @@ class Ncio(object):
     def backup_scriptfile(self, filename):
         if self.param.myrank == 0:
             shutil.copyfile(filename, self.script_path)
+
+    def create_diagnostic_file(self, diags):
+        with Dataset(self.diag_path, "w", format='NETCDF4') as nc:
+            nc.createDimension("t", None)
+            d = nc.createVariable("t", "f", ("t",))
+            d.long_name = "model time"
+            d = nc.createVariable("kt", "i", ("t",))
+            d.long_name = "model iteration"
+
+            for v in diags:
+                d = nc.createVariable(v, "f", ("t",))
+                d.long_name = v
 
     def create_history_file(self, state):
         self.gridvar = ["msk", "f", "hb"]
@@ -178,9 +192,10 @@ class Ncio(object):
                 nc.variables[nickname][self.kt] = data
         self.kt += 1
 
-    def dodiag(self, diags, time):
-        with Dataset(self.hist_path, "r+") as nc:
-            nc.variables['tdiag'][self.ktdiag] = time
+    def dodiags(self, diags, time, kt):
+        with Dataset(self.diag_path, "r+") as nc:
+            nc.variables["t"][self.ktdiag] = time
+            nc.variables["kt"][self.ktdiag] = kt
             for key, val in diags.items():
                 nc.variables[key][self.ktdiag] = val
         self.ktdiag += 1

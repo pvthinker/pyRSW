@@ -10,9 +10,9 @@ def comppv(state, grid):
     fd.comppv(vor, f, h, pv)
 
 
-def comppv_c(state):
+def comppv_c(state, grid):
     vor = state.vor.view("i")
-    f = state.f.view("i")
+    f = grid.arrays.f.view("i")
     h = state.h.view("i")
     pv = state.pv.view("i")
     fd.comppv_c(vor, f, h, pv)
