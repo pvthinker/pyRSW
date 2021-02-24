@@ -99,6 +99,7 @@ numerics:
     VF_order:
         default: 5
         doc: Interpolation order for the vorticity flux
+        avail: 1, 3, 5
         type: int
 
     MF_linear:
@@ -109,6 +110,7 @@ numerics:
     MF_order:
         default: 5
         doc: Interpolation order for the mass flux
+        avail: 1, 3, 5
         type: int
 
 # --------------------
