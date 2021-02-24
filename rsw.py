@@ -3,7 +3,9 @@ import sys
 import signal
 import variables
 from bulk import Bulk
+import parameters
 import time
+import os
 
 # if these modules aren't yet compiled, do it
 try:
@@ -23,6 +25,15 @@ import operators
 import tracer
 import plotting
 from ncio import Ncio
+
+# check pyRSW is properly installed
+if os.path.isdir(parameters.configdir):
+    if os.path.isfile(parameters.paramfile):
+        pass
+    else:
+        raise ValueError("Please copy defaults.yaml in your ~/.pyrsw")
+else:
+    raise ValueError("Please install pyrsw first, with ./install.sh")
 
 
 class RSW(object):

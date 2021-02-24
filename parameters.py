@@ -1,7 +1,10 @@
 import yaml
+import os
+
+configdir = os.path.expanduser("~/.pyrsw")
+paramfile = f"{configdir}/defaults.yaml"
 
 def get_param():
-    paramfile = "defaults.yaml"
     with open(paramfile, "r") as f:
         p = yaml.load(f, Loader=yaml.Loader)
     topics = p.keys()
