@@ -98,6 +98,7 @@ class RSW(object):
 
         ngridpoints = self.param.nx*self.param.ny*self.param.nz
         walltime = time.time()
+        starttime = walltime
         while self.ok:
             walltime0 = walltime
 
@@ -141,7 +142,7 @@ class RSW(object):
             perf = (walltime-walltime0)/ngridpoints
             tu = self.param.timeunit
 
-            time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e}s"
+            time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
             print(time_string, end="")
 
         if self.param.plot_interactive:
@@ -154,6 +155,7 @@ class RSW(object):
         if self.param.myrank == 0:
             print()
             print(self.termination_status)
+            print(f"Wall time: {walltime-starttime:.3} s")
             print(f"Output written to: {self.io.hist_path}")
 
     def forward(self):
