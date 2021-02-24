@@ -37,75 +37,75 @@ def compile(verbose=False):
     # interp1d_etoc = wrapper(wenoflux_edge2center)
     weno5 = wrapper(w5)
     weno3 = wrapper(w3)
-    interp1d_ctoe = wrapper(wenoflux_center2edge)
-    interp1d_etoc_linear = wrapper(linearflux_edge2center)
-    interp1d_ctoe_linear = wrapper(linearflux_center2edge)
+    # interp1d_ctoe = wrapper(wenoflux_center2edge)
+    # interp1d_etoc_linear = wrapper(linearflux_edge2center)
+    # interp1d_ctoe_linear = wrapper(linearflux_center2edge)
 
     #from wenos import weno5
 
     cc = CC("finitediff")
     cc.verbose = verbose
 
-    @cc.export("interp1d_etoc",
-               "void(f8[:], f8[:], f8[:], i8[:], i8[:])")
-    def wenoflux_edge2center(q, U, flux, porder, morder):
-        """ compute flux = U * q
+    # @cc.export("interp1d_etoc",
+    #            "void(f8[:], f8[:], f8[:], i8[:], i8[:])")
+    # def wenoflux_edge2center(q, U, flux, porder, morder):
+    #     """ compute flux = U * q
 
-        staggering:
+    #     staggering:
 
-        center: U, flux
-        edge: q
+    #     center: U, flux
+    #     edge: q
 
-        U and flux have the same shape
-        q has one more element
-        q[i] is on the *left* of U[i]
-        """
-        n = U.shape[0]
+    #     U and flux have the same shape
+    #     q has one more element
+    #     q[i] is on the *left* of U[i]
+    #     """
+    #     n = U.shape[0]
 
-        # porder = np.zeros((n,), dtype=int)
-        # morder = np.zeros((n,), dtype=int)
+    #     # porder = np.zeros((n,), dtype=int)
+    #     # morder = np.zeros((n,), dtype=int)
 
-        porder[0] = 1
-        porder[1] = 3
-        porder[2:-1] = 5
-        porder[-1] = 3
+    #     porder[0] = 1
+    #     porder[1] = 3
+    #     porder[2:-1] = 5
+    #     porder[-1] = 3
 
-        morder[0] = 3
-        morder[1:-2] = 5
-        morder[-2] = 3
-        morder[-1] = 1
+    #     morder[0] = 3
+    #     morder[1:-2] = 5
+    #     morder[-2] = 3
+    #     morder[-1] = 1
 
-        # third order linear
-        c1 = -1./6.
-        c2 = 5./6.
-        c3 = 2./6.
-        #porder = 5
-        #morder = 5
-        qi = 0.
-        for k in range(n):
-            if U[k] > 0:
-                if porder[k] == 5:
-                    #qi = d1*q[k-2]+d2*q[k-1]+d3*q[k]+d4*q[k+1]+d5*q[k+2]
+    #     # third order linear
+    #     c1 = -1./6.
+    #     c2 = 5./6.
+    #     c3 = 2./6.
+    #     #porder = 5
+    #     #morder = 5
+    #     qi = 0.
+    #     for k in range(n):
+    #         if U[k] > 0:
+    #             if porder[k] == 5:
+    #                 #qi = d1*q[k-2]+d2*q[k-1]+d3*q[k]+d4*q[k+1]+d5*q[k+2]
 
-                    qi = weno5(q[k-2], q[k-1], q[k], q[k+1], q[k+2], 1)
-                elif porder[k] == 3:
-                    #qi = c1*q[k-1]+c2*q[k]+c3*q[k+1]
-                    qi = weno3(q[k-1], q[k], q[k+1], 1)
-                else:
-                    # porder[k] == 1:
-                    qi = q[k]
-            else:
-                if morder[k] == 5:
-                    # qi = d5*q[k-1]+d4*q[k]+d3*q[k+1]+d2*q[k+2]+d1*q[k+3]
-                    qi = weno5(q[k-1], q[k], q[k+1], q[k+2], q[k+3], -1)
-                elif morder[k] == 3:
-                    # qi = c3*q[k]+c2*q[k+1]+c1*q[k+2]
-                    qi = weno3(q[k], q[k+1], q[k+2], -1)
-                else:
-                    # morder[k] == 1:
-                    qi = q[k+1]
+    #                 qi = weno5(q[k-2], q[k-1], q[k], q[k+1], q[k+2], 1)
+    #             elif porder[k] == 3:
+    #                 #qi = c1*q[k-1]+c2*q[k]+c3*q[k+1]
+    #                 qi = weno3(q[k-1], q[k], q[k+1], 1)
+    #             else:
+    #                 # porder[k] == 1:
+    #                 qi = q[k]
+    #         else:
+    #             if morder[k] == 5:
+    #                 # qi = d5*q[k-1]+d4*q[k]+d3*q[k+1]+d2*q[k+2]+d1*q[k+3]
+    #                 qi = weno5(q[k-1], q[k], q[k+1], q[k+2], q[k+3], -1)
+    #             elif morder[k] == 3:
+    #                 # qi = c3*q[k]+c2*q[k+1]+c1*q[k+2]
+    #                 qi = weno3(q[k], q[k+1], q[k+2], -1)
+    #             else:
+    #                 # morder[k] == 1:
+    #                 qi = q[k+1]
 
-            flux[k] = U[k]*qi
+    #         flux[k] = U[k]*qi
 
     @cc.export("bernoulli",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:,:], boolean)")
@@ -206,8 +206,7 @@ def compile(verbose=False):
                     m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
                     if m >= 4:
                         vort[k, j, i] = (v[k, j, i] - v[k, j, i-1]
-                                         -u[k, j, i] + u[k, j-1, i])
-
+                                         - u[k, j, i] + u[k, j-1, i])
 
     @cc.export("compke",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i4)")
@@ -257,8 +256,8 @@ def compile(verbose=False):
         for k in range(nz):
             for j in range(shape[1]):
                 for i in range(shape[2]):
-                    if msk[j,i] == 1:
-                        p[k,j,i] /= area[j,i]
+                    if msk[j, i] == 1:
+                        p[k, j, i] /= area[j, i]
 
     @cc.export("vortex_force",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], f8[:], i1[:, :], i4)")
@@ -315,7 +314,7 @@ def compile(verbose=False):
                 #     Um[i] = (U0+U1)*.25
                 #     U0 = U1
                 for i in range(nx):
-                    q[i] = vor[k, j, i]#+f[j, i]
+                    q[i] = vor[k, j, i]  # +f[j, i]
 
                 # interp1d_etoc(q, Um, flux, porder, morder)
                 U0 = U[k, j-1, 0] + U[k, j, 0]
@@ -335,7 +334,7 @@ def compile(verbose=False):
                         elif porder == 1:
                             qi = q[i]
                         else:
-                            qi = 0#q[i+1]
+                            qi = 0  # q[i+1]
                     else:
                         morder = order[j, i+1]
 
@@ -351,10 +350,10 @@ def compile(verbose=False):
                         elif morder == 1:
                             qi = q[i+1]
                         else:
-                            qi = 0#q[i]
+                            qi = 0  # q[i]
 
                     #flux[i] = Um[i]*qi
-                    ff = 0.5*(f[j,i]+f[j,i+1])
+                    ff = 0.5*(f[j, i]+f[j, i+1])
                     if sign == 1:
                         dv[k, j, i] += Um*(qi+ff)
                     else:
@@ -395,8 +394,8 @@ def compile(verbose=False):
             k, j = I
             q = field[k, j]
             #Um = U[k, j]
-            for i in range(1,nx+1):
-                if U[k,j,i] > 0:
+            for i in range(1, nx+1):
+                if U[k, j, i] > 0:
                     porder = order[j, i]
                     #porder = Porder[i]
                     if porder == 5:
@@ -429,7 +428,7 @@ def compile(verbose=False):
                         qi = 0.
 
                 #flux[i] = Um[i]*qi
-                f = U[k,j,i]*qi
+                f = U[k, j, i]*qi
                 dfield[k, j, i] += f
                 dfield[k, j, i-1] -= f
 
@@ -437,4 +436,55 @@ def compile(verbose=False):
             # for i in range(nx):
             #     dfield[k, j, i] -= flux[i+1]-flux[i]
 
+    @cc.export("set_geostrophic_vel",
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :], f8[:, :], f8[:, :], i1[:, :])")
+    def set_geostrophic_vel(u, v, vor, p, ke, dx2, dy2, f, msk):
+        nz, ny, nx = np.shape(p)
+        B = np.zeros((ny+1, nx+1))
+        mskv = np.zeros_like(msk)
+        cff = [0., 1., 0.5, 1./3, 0.25]
+        for j in range(1, ny):
+            for i in range(1, nx):
+                if msk[j-1, i]+msk[j-1, i-1]+msk[j, i]+msk[j, i-1] == 4:
+                    mskv[j, i] = 1
+        for k in range(nz):
+            b = p[k]+ke[k]
+            W = vor[k]+f
+            # j = 0
+            B[0, 0] = b[0, 0]*cff[msk[0, 0]]
+            for i in range(1, nx):
+                B[0, i] = (b[0, i-1]+b[0, i])*cff[msk[0, i-1]+msk[0, i]]
+            B[0, nx] = b[0, nx-1]*cff[msk[0, nx-1]]
+
+            j = ny-1
+            B[j+1, 0] = b[j, 0]*cff[msk[j, 0]]
+            for i in range(1, nx):
+                B[j+1, i] = (b[j, i-1]+b[j, i])*cff[msk[j, i-1]+msk[j, i]]
+            B[j+1, nx] = b[j, nx-1]*cff[msk[j, nx-1]]
+
+            for j in range(1, ny):
+                b0 = b[j-1, 0]+b[j, 0]
+                m0 = msk[j-1, 0]+msk[j, 0]
+                B[j, 0] = b0*cff[m0]
+                for i in range(1, nx):
+                    b1 = b[j-1, i]+b[j, i]
+                    m1 = msk[j-1, i]+msk[j, i]
+                    B[j, i] = (b0+b1)*cff[m0+m1]
+                    b0 = b1
+                    m0 = m1
+                B[j, nx] = b1*cff[m1]
+
+            for j in range(ny):
+                for i in range(1, nx-1):
+                    w = (W[j+1, i]+W[j, i])*0.5
+                    if mskv[j+1, i]+mskv[j, i] == 2:
+                        u[k, j, i] = -(B[j+1, i]-B[j, i])/w
+                    u[k, j, i] *= dx2[j, i]
+
+            for j in range(1, ny-1):
+                for i in range(nx):
+                    w = (W[j, i+1]+W[j, i])*0.5
+                    if mskv[j, i+1]+mskv[j, i] == 2:
+                        v[k, j, i] = +(B[j, i+1]-B[j, i])/w
+                    v[k, j, i] *= dy2[j, i]
     cc.compile()
