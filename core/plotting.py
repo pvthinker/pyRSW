@@ -21,7 +21,11 @@ class Figure(object):
         var = state.get(self.plotvar)
         z2d = var.getproperunits(self.grid)[-1]
 
-        topocolor = '#556b2f'  # topography contours are green
+        topocolor = "#556b2f"  # topography contours are green
+
+        self.titlestr = "%s / t=%.2f"
+        if param.nz > 1:
+            self.titlestr += " / layer="+f"{self.param.nz-1}"
 
         self.fig = plt.figure(figsize=(12, 12))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
@@ -38,7 +42,7 @@ class Figure(object):
         self.ax1.contour(grid.xc, grid.yc, hb, 3, colors=topocolor)
 
         plt.colorbar(self.im)
-        self.ax1.set_title('%s / t=%.2f' % (var.name, time/self.tu))
+        self.ax1.set_title(self.titlestr % (var.name, time/self.tu))
         self.ax1.set_xlabel('X')
         self.ax1.set_ylabel('Y')
         H = param.H
@@ -74,7 +78,7 @@ class Figure(object):
         else:
             raise ValueError('colorscheme should be "imposed" or "auto"')
 
-        self.ax1.set_title('%s / t=%.2f' % (self.plotvar, time/self.tu))
+        self.ax1.set_title(self.titlestr % (self.plotvar, time/self.tu))
         self.im.set_clim(vmin=vmin, vmax=vmax)
         self.fig.canvas.draw()
         if self.param.generate_mp4:
