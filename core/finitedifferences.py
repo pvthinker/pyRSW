@@ -2,7 +2,7 @@ import numpy as np
 from math import exp
 from numba.pycc import CC
 from numba.pycc import compiler
-from numba import decorators
+from numba import jit
 
 # third order linear
 c1 = -1./6.
@@ -23,8 +23,7 @@ def compile(verbose=False):
     from weno import weno5 as w5
     from weno import weno3 as w3
 
-    wrapper = decorators._jit(None,
-                              locals={}, target="cpu", cache=False, targetoptions={})
+    wrapper = jit
 
     weno5 = wrapper(w5)
     weno3 = wrapper(w3)
