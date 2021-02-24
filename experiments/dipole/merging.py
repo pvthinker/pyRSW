@@ -10,7 +10,7 @@ from rsw import RSW
 param = Param()
 
 reso = 2
-param.expname = "merging"
+param.expname = "merging_linear"
 param.nz = 1
 param.ny = 64*reso
 param.nx = 64*reso
@@ -21,6 +21,11 @@ param.geometry = "closed"
 param.cfl = 0.25
 param.dt = 0.8e-2/reso
 param.tend = 5
+
+param.VF_linear = True
+param.MF_linear = True
+param.MF_order = 1
+
 param.plotvar = "pv"
 param.freq_plot = 20
 param.freq_his = 0.1
