@@ -43,12 +43,12 @@ echo ""
 
 # for bash users
 cat > $pydir/activate.sh << EOF
-export PYTHONPATH=`pwd`
+export PYTHONPATH=`pwd`/core
 echo Python now knows that pyRSW is in `pwd`
 EOF
 
 # for csh, tcsh users
 cat > $pydir/activate.csh << EOF
-setenv PYTHONPATH `pwd`
+setenv PYTHONPATH `pwd`/core
 echo Python now knows that pyRSW is in `pwd`
 EOF
