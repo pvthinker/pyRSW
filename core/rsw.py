@@ -155,7 +155,8 @@ class RSW(object):
         if self.param.myrank == 0:
             print()
             print(self.termination_status)
-            print(f"Wall time: {walltime-starttime:.3} s")
+            wt = walltime-starttime
+            print(f"Wall time: {wt:.3} s -- {wt/kite:.2e} s/iteration")
             print(f"Output written to: {self.io.hist_path}")
 
     def forward(self):
@@ -263,8 +264,13 @@ class RSW(object):
         else:
             nblayers = param.nz
         ny, nx = param.ny, param.nx
+        if not param.VF_linear and not param.MF_linear and (param.VF_order==5) and (param.MF_order==5):
+            numerics = "default numerics: weno 5th on vorticity and mass flux"
+        else:
+            numerics = "lower numerics: you're not using the best combination"
         print(f"  Experiment: {param.expname}")
         print(f"  grid size : {nblayers} layer{s} {ny} x {nx} in {param.coordinates} coordinates")
+        print(f"  {numerics}")
         print("")
 
     def banner(self):
