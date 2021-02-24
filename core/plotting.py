@@ -21,6 +21,8 @@ class Figure(object):
         var = state.get(self.plotvar)
         z2d = var.getproperunits(self.grid)[-1]
 
+        topocolor = '#556b2f'  # topography contours are green
+
         self.fig = plt.figure(figsize=(12, 12))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
         if param.plot_type == "imshow":
@@ -31,6 +33,9 @@ class Figure(object):
             self.im = self.ax1.pcolormesh(xe, ye, z2d, cmap='RdBu_r')
         else:
             raise ValueError
+
+        hb = grid.arrays.hb.view("i")
+        self.ax1.contour(grid.xc, grid.yc, hb, 3, colors=topocolor)
 
         plt.colorbar(self.im)
         self.ax1.set_title('%s / t=%.2f' % (var.name, time/self.tu))
