@@ -51,6 +51,7 @@ class RSW(object):
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
+        self.print_recap()
 
     def fix_density(self):
         """ Transform param.rho into a numpy array
@@ -249,6 +250,20 @@ class RSW(object):
             print('\n hit ctrl-C, stopping', end='')
         self.ok = False
         self.termination_status = "Job manually interrupted"
+
+    def print_recap(self):
+        param = self.param
+        s = "s"
+        if param.nz<4:
+            nblayers = {1:"one", 2:"two", 3: "three"}[param.nz]
+            if param.nz == 1:
+                s=""
+        else:
+            nblayers = param.nz
+        ny, nx = param.ny, param.nx
+        print(f"  Experiment: {param.expname}")
+        print(f"  grid size : {nblayers} layer{s} {ny} x {nx} in {param.coordinates} coordinates")
+        print("")
 
     def banner(self):
         logo = [
