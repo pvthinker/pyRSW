@@ -2,19 +2,42 @@
 
 pydir=$HOME/.pyrsw
 default=defaults.yaml
+srcdir=`pwd`
+myexpdir=$srcdir/myexp
 
 echo "--------------------------------------------------------------------------------"
 echo ""
 echo " Installing pyRSW"
 echo ""
 if [ ! -d "$pydir" ]; then
-    echo "Create $pydir"
+    echo "  Create $pydir"
     mkdir $pydir
 fi
 if [ ! -f "$pydir/$default" ]; then
-    echo "Copy $default in $pydir"
+    echo "  Copy $default in $pydir"
     cp $default $pydir/
 fi
+if [ ! -d "$myexpdir" ]; then
+    echo "  Create $myexpdir"
+    mkdir $myexpdir
+    echo "  Copy reference experiments in $myexpdir"
+    cp -pR $srcdir/experiments/* $myexpdir
+fi
+
+# for bash users
+cat > $pydir/activate.sh << EOF
+export PYTHONPATH=`pwd`/core
+echo Python now knows that pyRSW is in `pwd`
+EOF
+
+# for csh, tcsh users
+cat > $pydir/activate.csh << EOF
+setenv PYTHONPATH `pwd`/core
+echo Python now knows that pyRSW is in `pwd`
+EOF
+
+# copy the experiment into
+
 echo ""
 echo "  To use pyRSW you simply need to enter"
 echo "     source ~/.pyrsw/activate.sh  if you're under bash"
@@ -38,17 +61,8 @@ echo ""
 echo "  If you don't know where to store your results check that"
 echo "  with your system administrator."
 echo ""
-echo "  Once you know where to store the results, then the fun starts!"
+echo "  Once you know where to store the results, then you're good to go"
+echo "  To run a prexisting experiment or to set up a new one, work in"
 echo ""
-
-# for bash users
-cat > $pydir/activate.sh << EOF
-export PYTHONPATH=`pwd`/core
-echo Python now knows that pyRSW is in `pwd`
-EOF
-
-# for csh, tcsh users
-cat > $pydir/activate.csh << EOF
-setenv PYTHONPATH `pwd`/core
-echo Python now knows that pyRSW is in `pwd`
-EOF
+echo "      cd $myexpdir"
+echo ""
