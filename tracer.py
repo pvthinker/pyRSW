@@ -17,4 +17,4 @@ def rhstrac(state, rhs, param, grid, last=False):
                 order = grid.arrays.tpordery.view("j")
 
             dfield = dtrac.view(direction)
-            fd.upwindtrac(field, velocity, dfield, order)
+            fd.upwindtrac(field, velocity, dfield, order, param.MF_linear)

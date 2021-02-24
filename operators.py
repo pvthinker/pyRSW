@@ -90,7 +90,7 @@ def vortex_force(state, dstate, param, grid):
     order = grid.arrays.vpordery.view("j")
     nx = vor.shape[2]
     q = np.zeros((nx,))
-    fd.vortex_force(V, f, vor, du, q, order, +1)
+    fd.vortex_force(V, f, vor, du, q, order, +1, param.VF_linear)
 
     dv = dstate.u["j"].view("i")
     U = state.U["i"].view("i")
@@ -100,7 +100,7 @@ def vortex_force(state, dstate, param, grid):
     order = grid.arrays.vporderx.view("i")
     nx = vor.shape[2]
     q = np.zeros((nx,))
-    fd.vortex_force(U, f, vor, dv, q, order, -1)
+    fd.vortex_force(U, f, vor, dv, q, order, -1, param.VF_linear)
 
 
 def bernoulli(state, dstate, param, grid):

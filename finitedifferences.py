@@ -2,110 +2,35 @@ import numpy as np
 from math import exp
 from numba.pycc import CC
 from numba.pycc import compiler
-#import numba.types as types
-#from numba import jit, generated_jit
-#from numba import sigutils, typing
 from numba import decorators
 
-# @jit
-# def interp1d(q:types.float32[:], qp:types.float32[:], qm:types.float32[:]):
-#     nx = len(q)
-#     for i in range(nx):
-#         qp[i] = exp(q[i])
-#         qm[i] = exp(q[i])
+# third order linear
+c1 = -1./6.
+c2 = 5./6.
+c3 = 2./6.
 
+# fifth order
+d1 = 2./60.
+d2 = -13./60.
+d3 = 47./60.
+d4 = 27./60.
+d5 = -3./60.
 
-# to be able to use interp1d within a compiled function
-# we need to either 1) define it in this script with @jit
-# or 2) to import it and jit it here
-
-# option 2) import it and jit it here
-#from interpolation import interp1d as interp1d_raw
 
 def compile(verbose=False):
     print("Compile the finite difference module with numba")
 
-    #from weno import wenoflux_edge2center
     from weno import weno5 as w5
     from weno import weno3 as w3
-    from weno import wenoflux_center2edge
-    from weno import linearflux_center2edge
-    from weno import linearflux_edge2center
-    #import weno
+
     wrapper = decorators._jit(None,
                               locals={}, target="cpu", cache=False, targetoptions={})
-    # interp1d_etoc = wrapper(wenoflux_edge2center)
+
     weno5 = wrapper(w5)
     weno3 = wrapper(w3)
-    # interp1d_ctoe = wrapper(wenoflux_center2edge)
-    # interp1d_etoc_linear = wrapper(linearflux_edge2center)
-    # interp1d_ctoe_linear = wrapper(linearflux_center2edge)
-
-    #from wenos import weno5
 
     cc = CC("finitediff")
     cc.verbose = verbose
-
-    # @cc.export("interp1d_etoc",
-    #            "void(f8[:], f8[:], f8[:], i8[:], i8[:])")
-    # def wenoflux_edge2center(q, U, flux, porder, morder):
-    #     """ compute flux = U * q
-
-    #     staggering:
-
-    #     center: U, flux
-    #     edge: q
-
-    #     U and flux have the same shape
-    #     q has one more element
-    #     q[i] is on the *left* of U[i]
-    #     """
-    #     n = U.shape[0]
-
-    #     # porder = np.zeros((n,), dtype=int)
-    #     # morder = np.zeros((n,), dtype=int)
-
-    #     porder[0] = 1
-    #     porder[1] = 3
-    #     porder[2:-1] = 5
-    #     porder[-1] = 3
-
-    #     morder[0] = 3
-    #     morder[1:-2] = 5
-    #     morder[-2] = 3
-    #     morder[-1] = 1
-
-    #     # third order linear
-    #     c1 = -1./6.
-    #     c2 = 5./6.
-    #     c3 = 2./6.
-    #     #porder = 5
-    #     #morder = 5
-    #     qi = 0.
-    #     for k in range(n):
-    #         if U[k] > 0:
-    #             if porder[k] == 5:
-    #                 #qi = d1*q[k-2]+d2*q[k-1]+d3*q[k]+d4*q[k+1]+d5*q[k+2]
-
-    #                 qi = weno5(q[k-2], q[k-1], q[k], q[k+1], q[k+2], 1)
-    #             elif porder[k] == 3:
-    #                 #qi = c1*q[k-1]+c2*q[k]+c3*q[k+1]
-    #                 qi = weno3(q[k-1], q[k], q[k+1], 1)
-    #             else:
-    #                 # porder[k] == 1:
-    #                 qi = q[k]
-    #         else:
-    #             if morder[k] == 5:
-    #                 # qi = d5*q[k-1]+d4*q[k]+d3*q[k+1]+d2*q[k+2]+d1*q[k+3]
-    #                 qi = weno5(q[k-1], q[k], q[k+1], q[k+2], q[k+3], -1)
-    #             elif morder[k] == 3:
-    #                 # qi = c3*q[k]+c2*q[k+1]+c1*q[k+2]
-    #                 qi = weno3(q[k], q[k+1], q[k+2], -1)
-    #             else:
-    #                 # morder[k] == 1:
-    #                 qi = q[k+1]
-
-    #         flux[k] = U[k]*qi
 
     @cc.export("bernoulli",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:,:], boolean)")
@@ -260,8 +185,8 @@ def compile(verbose=False):
                         p[k, j, i] /= area[j, i]
 
     @cc.export("vortex_force",
-               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], f8[:], i1[:, :], i4)")
-    def vortex_force(U, f, vor, dv, q, order, sign):
+               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], f8[:], i1[:, :], i4, boolean)")
+    def vortex_force(U, f, vor, dv, q, order, sign, linear):
         """
         computes du = du + (sign) * (vor+f)*V
 
@@ -284,157 +209,180 @@ def compile(verbose=False):
 
         """
         nz, ny, nx = vor.shape
-        #q = np.zeros((nx,))
-        #Um = np.zeros((nx-1,))
-        #flux = np.zeros((nx-1,))
 
         assert U.shape == (nz, ny-1, nx)
         assert dv.shape == (nz, ny, nx-1)
         assert order.shape == (ny, nx)
         assert q.shape == (nx,)
 
-        # Porder = np.zeros((nx-1,), dtype=np.int8)
-        # Morder = np.zeros((nx-1,), dtype=np.int8)
+        if not linear:
+            for k in range(nz):
+                for j in range(1, ny-1):
+                    for i in range(nx):
+                        q[i] = vor[k, j, i]  # +f[j, i]
 
-        # Porder[0] = 1
-        # Porder[1] = 3
-        # Porder[2:-1] = 5
-        # Porder[-1] = 3
-
-        # Morder[0] = 3
-        # Morder[1:-2] = 5
-        # Morder[-2] = 3
-        # Morder[-1] = 1
-
-        for k in range(nz):
-            for j in range(1, ny-1):
-                # U0 = U[k, j-1, 0] + U[k, j, 0]
-                # for i in range(nx-1):
-                #     U1 = U[k, j-1, i+1] + U[k, j, i+1]
-                #     Um[i] = (U0+U1)*.25
-                #     U0 = U1
-                for i in range(nx):
-                    q[i] = vor[k, j, i]  # +f[j, i]
-
-                # interp1d_etoc(q, Um, flux, porder, morder)
-                U0 = U[k, j-1, 0] + U[k, j, 0]
-                for i in range(nx-1):
-                    U1 = U[k, j-1, i+1] + U[k, j, i+1]
-                    Um = (U0+U1)*.25
-                    U0 = U1
-                    if Um > 0:
-                        porder = order[j, i]
-                        #porder = Porder[i]
-                        if porder == 5:
-                            #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
-                            qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 1)
-                        elif porder == 3:
-                            #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
-                            qi = weno3(q[i-1], q[i], q[i+1], 1)
-                        elif porder == 1:
-                            qi = q[i]
+                    U0 = U[k, j-1, 0] + U[k, j, 0]
+                    for i in range(nx-1):
+                        U1 = U[k, j-1, i+1] + U[k, j, i+1]
+                        Um = (U0+U1)*.25
+                        U0 = U1
+                        if Um > 0:
+                            porder = order[j, i]
+                            if porder == 5:
+                                #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
+                                qi = weno5(q[i-2], q[i-1], q[i],
+                                           q[i+1], q[i+2], 1)
+                            elif porder == 3:
+                                #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
+                                qi = weno3(q[i-1], q[i], q[i+1], 1)
+                            elif porder == 1:
+                                qi = q[i]
+                            else:
+                                qi = 0
                         else:
-                            qi = 0  # q[i+1]
-                    else:
-                        morder = order[j, i+1]
+                            morder = order[j, i+1]
+                            if morder == 5:
+                                # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
+                                qi = weno5(q[i+3], q[i+2], q[i+1],
+                                           q[i], q[i-1], 1)
+                            elif morder == 3:
+                                #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
+                                qi = weno3(q[i+2], q[i+1], q[i], 1)
+                            elif morder == 1:
+                                qi = q[i+1]
+                            else:
+                                qi = 0  # q[i]
 
-                        #morder = Morder[i]
-                        if morder == 5:
-                            # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
-                            #qi = weno5(q[i-1], q[i], q[i+1], q[i+2], q[i+3], 0)
-                            qi = weno5(q[i+3], q[i+2], q[i+1], q[i], q[i-1], 1)
-                        elif morder == 3:
-                            #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
-                            #qi = weno3(q[i], q[i+1], q[i+2], 0)
-                            qi = weno3(q[i+2], q[i+1], q[i], 1)
-                        elif morder == 1:
-                            qi = q[i+1]
+                        ff = 0.5*(f[j, i]+f[j, i+1])
+                        if sign == 1:
+                            dv[k, j, i] += Um*(qi+ff)
                         else:
-                            qi = 0  # q[i]
+                            dv[k, j, i] -= Um*(qi+ff)
+        else:
+            for k in range(nz):
+                for j in range(1, ny-1):
+                    for i in range(nx):
+                        q[i] = vor[k, j, i]  # +f[j, i]
 
-                    #flux[i] = Um[i]*qi
-                    ff = 0.5*(f[j, i]+f[j, i+1])
-                    if sign == 1:
-                        dv[k, j, i] += Um*(qi+ff)
-                    else:
-                        dv[k, j, i] -= Um*(qi+ff)
+                    U0 = U[k, j-1, 0] + U[k, j, 0]
+                    for i in range(nx-1):
+                        U1 = U[k, j-1, i+1] + U[k, j, i+1]
+                        Um = (U0+U1)*.25
+                        U0 = U1
+                        if Um > 0:
+                            porder = order[j, i]
+                            if porder == 5:
+                                qi = d1*q[i-2]+d2*q[i-1]+d3 * \
+                                    q[i]+d4*q[i+1]+d5*q[i+2]
+                                #qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 1)
+                            elif porder == 3:
+                                qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
+                                q  # i = weno3(q[i-1], q[i], q[i+1], 1)
+                            elif porder == 1:
+                                qi = q[i]
+                            else:
+                                qi = 0
+                        else:
+                            morder = order[j, i+1]
+                            if morder == 5:
+                                qi = d1*q[i+3]+d2*q[i+2]+d3 * \
+                                    q[i+1]+d4*q[i]+d5*q[i-1]
+                                #qi = weno5(q[i+3], q[i+2], q[i+1], q[i], q[i-1], 1)
+                            elif morder == 3:
+                                qi = c1*q[i+2]+c2*q[i+1]+c3*q[i]
+                                #qi = weno3(q[i+2], q[i+1], q[i], 1)
+                            elif morder == 1:
+                                qi = q[i+1]
+                            else:
+                                qi = 0  # q[i]
 
-                # if sign == 1:
-                #     for i in range(nx-1):
-                #         dv[k, j, i] += flux[i]
-                # elif sign == -1:
-                #     for i in range(nx-1):
-                #         dv[k, j, i] -= flux[i]
+                        ff = 0.5*(f[j, i]+f[j, i+1])
+                        if sign == 1:
+                            dv[k, j, i] += Um*(qi+ff)
+                        else:
+                            dv[k, j, i] -= Um*(qi+ff)
 
     @cc.export("upwindtrac",
-               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
-    def upwindtrac(field, U, dfield, order):
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :], boolean)")
+    def upwindtrac(field, U, dfield, order, linear):
         nz, ny, nx = field.shape
 
-        #flux = np.zeros((nx+1,))
         assert order.shape == (ny, nx+1)
-        # Porder = np.zeros((nx+1,), dtype=np.int8)
-        # morder = np.zeros((nx+1,), dtype=np.int8)
 
-        # Porder[0] = 0
-        # Porder[1] = 1
-        # Porder[2] = 3
-        # Porder[3:-2] = 5
-        # Porder[-2] = 3
-        # Porder[-1] = 1
-
-        # morder[0] = 1
-        # morder[1] = 3
-        # morder[2:-3] = 5
-        # morder[-3] = 3
-        # morder[-2] = 1
-        # morder[-1] = 0
-
-        for I in np.ndindex(nz, ny):
-            k, j = I
-            q = field[k, j]
-            #Um = U[k, j]
-            for i in range(1, nx+1):
-                if U[k, j, i] > 0:
-                    porder = order[j, i]
-                    #porder = Porder[i]
-                    if porder == 5:
-                        #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
-                        qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
-                    elif porder == 3:
-                        #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
-                        qi = weno3(q[i-2], q[i-1], q[i], 1)
-                    elif porder == 1:
-                        qi = q[i-1]
+        if linear:
+            for I in np.ndindex(nz, ny):
+                k, j = I
+                q = field[k, j]
+                for i in range(1, nx+1):
+                    if U[k, j, i] > 0:
+                        porder = order[j, i]
+                        if porder == 5:
+                            qi = d1*q[i-3]+d2*q[i-2]+d3 * \
+                                q[i-1]+d4*q[i]+d5*q[i+1]
+                            #qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
+                        elif porder == 3:
+                            qi = c1*q[i-2]+c2*q[i-1]+c3*q[i]
+                            #qi = weno3(q[i-2], q[i-1], q[i], 1)
+                        elif porder == 1:
+                            qi = q[i-1]
+                        else:
+                            qi = 0.
                     else:
-                        qi = 0.
-                else:
-                    if i < nx:
-                        morder = order[j, i+1]
-                        #morder = Porder[i+1]
-                    else:
-                        morder = 0
-                    if morder == 5:
-                        # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
-                        #qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 0)
-                        qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
-                    elif morder == 3:
-                        #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
-                        # qi = weno3(q[i-1], q[i], q[i+1], 0)
-                        qi = weno3(q[i+1], q[i], q[i-1], 1)
-                    elif morder == 1:
-                        qi = q[i]
-                    else:
-                        qi = 0.
+                        if i < nx:
+                            morder = order[j, i+1]
+                        else:
+                            morder = 0
+                        if morder == 5:
+                            qi = d1*q[i+2]+d2*q[i+1]+d3 * \
+                                q[i]+d4*q[i-1]+d5*q[i-2]
+                            #qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
+                        elif morder == 3:
+                            qi = c1*q[i+1]+c2*q[i]+c3*q[i-1]
+                            #qi = weno3(q[i+1], q[i], q[i-1], 1)
+                        elif morder == 1:
+                            qi = q[i]
+                        else:
+                            qi = 0.
 
-                #flux[i] = Um[i]*qi
-                f = U[k, j, i]*qi
-                dfield[k, j, i] += f
-                dfield[k, j, i-1] -= f
+                    f = U[k, j, i]*qi
+                    dfield[k, j, i] += f
+                    dfield[k, j, i-1] -= f
+        else:
+            for I in np.ndindex(nz, ny):
+                k, j = I
+                q = field[k, j]
+                for i in range(1, nx+1):
+                    if U[k, j, i] > 0:
+                        porder = order[j, i]
+                        if porder == 5:
+                            #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
+                            qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
+                        elif porder == 3:
+                            #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
+                            qi = weno3(q[i-2], q[i-1], q[i], 1)
+                        elif porder == 1:
+                            qi = q[i-1]
+                        else:
+                            qi = 0.
+                    else:
+                        if i < nx:
+                            morder = order[j, i+1]
+                        else:
+                            morder = 0
+                        if morder == 5:
+                            # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
+                            qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
+                        elif morder == 3:
+                            #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
+                            qi = weno3(q[i+1], q[i], q[i-1], 1)
+                        elif morder == 1:
+                            qi = q[i]
+                        else:
+                            qi = 0.
 
-            # interp1d_ctoe(field[k, j], U[k, j], flux)
-            # for i in range(nx):
-            #     dfield[k, j, i] -= flux[i+1]-flux[i]
+                    f = U[k, j, i]*qi
+                    dfield[k, j, i] += f
+                    dfield[k, j, i-1] -= f
 
     @cc.export("set_geostrophic_vel",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :], f8[:, :], f8[:, :], i1[:, :])")

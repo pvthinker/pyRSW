@@ -91,6 +91,26 @@ numerics:
         doc: Time scheme
         type: str
 
+    VF_linear:
+        default: False
+        doc: Use linear interpolation on the vorticity flux
+        type: bool
+
+    VF_order:
+        default: 5
+        doc: Interpolation order for the vorticity flux
+        type: int
+
+    MF_linear:
+        default: False
+        doc: Use linear interpolation on the mass flux
+        type: bool
+
+    MF_order:
+        default: 5
+        doc: Interpolation order for the mass flux
+        type: int
+
 # --------------------
 output:
 

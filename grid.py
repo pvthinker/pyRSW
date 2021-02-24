@@ -106,6 +106,7 @@ def set_domain_decomposition(param):
 
 class Grid(object):
     def __init__(self, param):
+        self.param = param
         set_domain_decomposition(param)
 
         self.arrays = variables.State(param, gridvar)
@@ -343,14 +344,14 @@ class Grid(object):
         msk = self.arrays.msk.view("i")
         txporder = self.arrays.tporderx.view("i")
         vyporder = self.arrays.vpordery.view("i")
-        index_tracerflux(msk, txporder)
-        index_vortexforce(msk, vyporder)
+        index_tracerflux(msk, txporder, self.param.MF_order)
+        index_vortexforce(msk, vyporder, self.param.VF_order)
 
         msk = self.arrays.msk.view("j")
         typorder = self.arrays.tpordery.view("j")
         vxporder = self.arrays.vporderx.view("j")
-        index_tracerflux(msk, typorder)
-        index_vortexforce(msk, vxporder)
+        index_tracerflux(msk, typorder, self.param.MF_order)
+        index_vortexforce(msk, vxporder, self.param.VF_order)
 
     def msku(self):
         mskc = self.arrays.msk.view("i")
@@ -374,7 +375,7 @@ class Grid(object):
 
 
 # @jit
-def index_tracerflux(msk, order):
+def index_tracerflux(msk, order, maxorder):
     """
     Determine the order for the biased interpolation
     of tracer along direction x at U point
@@ -404,9 +405,9 @@ def index_tracerflux(msk, order):
             else:
                 m5 = 0
 
-            if m5 == 5:
+            if (m5 == 5) and (maxorder>=5):
                 order[j, i1] = 5
-            elif m3 == 3:
+            elif (m3 == 3) and (maxorder>=3):
                 order[j, i1] = 3
             elif m1 >= 1:
                 order[j, i1] = 1
@@ -415,7 +416,7 @@ def index_tracerflux(msk, order):
 
 
 # @jit
-def index_vortexforce(mskc, order):
+def index_vortexforce(mskc, order, maxorder):
     """
     Determine the order for the biased interpolation
     of vorticity along direction x at V point
@@ -459,9 +460,9 @@ def index_vortexforce(mskc, order):
             else:
                 m5 = 0
 
-            if m5 > 0:
+            if (m5 > 0) and (maxorder>=5):
                 order[j, i1] = 5
-            elif m3 > 0:
+            elif (m3 > 0) and (maxorder>=3):
                 order[j, i1] = 3
             elif m1 > 0:
                 order[j, i1] = 1
