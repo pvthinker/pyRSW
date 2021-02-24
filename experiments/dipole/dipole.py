@@ -1,6 +1,6 @@
 """ Dipole-Wall collision experiment
 
-    with no-slip condition
+    with free or no-slip condition
 
     one layer case
 
@@ -11,7 +11,7 @@ import numpy as np
 from parameters import Param
 from grid import Grid
 from rsw import RSW
-from numba import jit
+import geostrophy as geos
 
 param = Param()
 
@@ -33,9 +33,7 @@ param.freq_plot = 100
 param.freq_his = 0.1
 param.plot_interactive = True
 param.colorscheme = "auto"
-param.cax = np.asarray([-2e-4, 12e-4])/2
 param.generate_mp4 = False
-param.linear = False
 param.timestepping = "RK3_SSP"
 param.f0 = 10.
 param.noslip = False
@@ -67,9 +65,10 @@ def vortex(xx, yy, **kwargs):
         m = np.zeros_like(d0)
         m[d0 <= d] = 1
         m[d0 > d] = -1
-        d2 = (xx-x0)**2 + (yy-y0)**2
-        d0 = np.sqrt(d2)
-        m[d0 < 0.1] = -1
+        # uncomment to have an island at the center
+        # d2 = (xx-x0)**2 + (yy-y0)**2
+        # d0 = np.sqrt(d2)
+        # m[d0 < 0.1] = -1
 
     else:
         m = np.exp(-d2/(2*d**2))-0.7
@@ -91,7 +90,7 @@ xe, ye = grid.xe, grid.ye
 
 
 kwargs = {"ratio": 0.25, "x0": param.Lx*0.5, "y0": param.Ly *
-          0.5, "d": param.Ly*0.5-grid.dy, "vtype": "cosine"}
+          0.5, "d": param.Ly*0.5, "vtype": "cosine"}
 
 grid.boundary = {"fbry": vortex, "kwargs": kwargs}
 
@@ -135,51 +134,6 @@ h[0] += amp*vortex(xc, yc, **{"x0": x0+dsep, "y0": y0, "d": d, "vtype": vtype})
 # convert height "h" to a volume form, i.e. multiply with the cell area
 h[0] *= area
 
+geos.set_balance(model)
 
-# to set initial geostropic adjustement
-# define exactly the same height but at corner cells...
-# trick: we use the vorticity array because it has the good shape
-# this array will be overwritten with the true vorticity
-# once the model is launched
-hF = model.state.vor
-hF[0] = h0
-#hF[0] += amp*dambreak(xe, ye, 0.5, 0.5-dsep, d)
-hF[0] -= amp*vortex(xe, ye, **{"x0": x0-dsep,
-                               "y0": y0, "d": d, "vtype": vtype})
-hF[0] += amp*vortex(xe, ye, **{"x0": x0+dsep,
-                               "y0": y0, "d": d, "vtype": vtype})
-
-
-def grad(phi, dphidx, dphidy):
-    phi.setview("i")
-    dphidx.setview("i")
-    dphidx[:] = phi[..., 1:]-phi[..., :-1]
-    phi.setview("j")
-    dphidy.setview("j")
-    dphidy[:] = phi[..., 1:]-phi[..., :-1]
-
-
-u[:] = 0.
-v[:] = 0.
-# then take the rotated gradient of it
-grad(hF, v, u)
-# f=1e1/4
-u[:] *= -(g/param.f0)
-v[:] *= +(g/param.f0)
-
-
-u = model.state.ux.view("i")
-v = model.state.uy.view("j")
-
-msk = grid.arrays.msk.view("i")
-h = model.state.h.view("i")
-msku = grid.msku()
-mskv = grid.mskv()
-
-for k in range(param.nz):
-    u[k] *= msku
-    v[k] *= mskv
-    h[k][msk == 0] = param.H*area[msk == 0]
-
-hF[:] = 0.
 model.run()
