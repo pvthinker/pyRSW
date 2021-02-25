@@ -3,12 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import matplotlib
+import warnings
 
 matplotlib.use('TkAgg')
 font = {'size': 16}
 matplotlib.rc('font', **font)
 
 plt.ion()
+
+# to disable the warning when no topography
+warnings.filterwarnings("ignore")
 
 
 class Figure(object):
