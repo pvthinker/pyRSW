@@ -1,8 +1,5 @@
 from ncio import Ncio
 import plotting
-import tracer
-import operators
-import timescheme as ts
 import numpy as np
 import sys
 import signal
@@ -31,6 +28,10 @@ except:
 if not fullycompiled:
     print("compilation completed".center(80, "-"))
 
+# can be imported ONLY IF compilation is done
+import operators
+import tracer
+import timescheme as ts
 
 # check pyRSW is properly installed
 if os.path.isdir(parameters.configdir):
