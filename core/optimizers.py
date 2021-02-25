@@ -2,7 +2,7 @@ from numba.pycc import CC
 
 
 def compile(verbose=False):
-    print("Compile the optimize module with numba")
+    print("** Compile the optimize module with numba")
 
     cc = CC("optimize")
     cc.verbose = verbose

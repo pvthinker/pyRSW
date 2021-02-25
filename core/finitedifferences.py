@@ -18,7 +18,7 @@ d5 = -3./60.
 
 
 def compile(verbose=False):
-    print("Compile the finite difference module with numba")
+    print("** Compile the finite difference module with numba")
 
     from weno import weno5 as w5
     from weno import weno3 as w3

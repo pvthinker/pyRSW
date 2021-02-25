@@ -1,3 +1,8 @@
+from ncio import Ncio
+import plotting
+import tracer
+import operators
+import timescheme as ts
 import numpy as np
 import sys
 import signal
@@ -7,24 +12,25 @@ import parameters
 import time
 import os
 
+fullycompiled = True
 # if these modules aren't yet compiled, do it
 try:
     import finitediff
 except:
     import finitedifferences as FD
     FD.compile()
+    fullycompiled = False
 
 try:
     import optimize
 except:
     import optimizers as OPT
     OPT.compile()
+    fullycompiled = False
 
-import timescheme as ts
-import operators
-import tracer
-import plotting
-from ncio import Ncio
+if not fullycompiled:
+    print("compilation completed".center(80, "-"))
+
 
 # check pyRSW is properly installed
 if os.path.isdir(parameters.configdir):
@@ -257,19 +263,21 @@ class RSW(object):
     def print_recap(self):
         param = self.param
         s = "s"
-        if param.nz<4:
-            nblayers = {1:"one", 2:"two", 3: "three"}[param.nz]
+        if param.nz < 4:
+            nblayers = {1: "one", 2: "two", 3: "three"}[param.nz]
             if param.nz == 1:
-                s=""
+                s = ""
         else:
             nblayers = param.nz
         ny, nx = param.ny, param.nx
-        if not param.VF_linear and not param.MF_linear and (param.VF_order==5) and (param.MF_order==5):
-            numerics = "default numerics: weno 5th on vorticity and mass flux"
+        if not param.VF_linear and not param.MF_linear and (param.VF_order == 5) and (param.MF_order == 5):
+            numerics = "numerics: weno 5th on vorticity and mass flux"
         else:
-            numerics = "lower numerics: you're not using the best combination"
+            numerics = "numerics: you're not using the best combination"
+
         print(f"  Experiment: {param.expname}")
-        print(f"  grid size : {nblayers} layer{s} {ny} x {nx} in {param.coordinates} coordinates")
+        print(
+            f"  grid size : {nblayers} layer{s} {ny} x {nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
         print("")
 
