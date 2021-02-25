@@ -20,9 +20,9 @@ fi
 if [ ! -d "$myexpdir" ]; then
     echo "  Create $myexpdir"
     mkdir $myexpdir
-    echo "  Copy reference experiments in $myexpdir"
-    cp -pR $srcdir/experiments/* $myexpdir
 fi
+echo "  Copy reference experiments in $myexpdir"
+cp -pR $srcdir/experiments/* $myexpdir
 
 # for bash users
 cat > $pydir/activate.sh << EOF
