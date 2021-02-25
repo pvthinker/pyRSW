@@ -225,7 +225,7 @@ class RSW(object):
         #     var = scalar.view("i")
         #     var[..., 0, :] = 0.
         #     var[..., -1, :] = 0.
-        if self.param.geometry == "perio_x":
+        if (self.param.geometry == "perio_x") and not self.param.openbc:
             nh = self.param.nh
             nh2 = nh+nh
             var = scalar.view("i")

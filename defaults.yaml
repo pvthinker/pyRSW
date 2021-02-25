@@ -40,6 +40,11 @@ space:
         doc: Activate the partial cell
         type: bool
 
+    openbc:
+        default: False
+        doc: Deactivate the periodicity in the halo
+        type: bool
+
     geometry:
         avail: closed, perio_x, perio_y, perio_xy
         default: closed
