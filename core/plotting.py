@@ -42,8 +42,9 @@ class Figure(object):
         else:
             raise ValueError
 
-        hb = grid.arrays.hb.view("i")
-        self.ax1.contour(grid.xc, grid.yc, hb, 3, colors=topocolor)
+        if param.coordinates is not "spherical":
+            hb = grid.arrays.hb.view("i")
+            self.ax1.contour(grid.xc, grid.yc, hb, 3, colors=topocolor)
 
         plt.colorbar(self.im)
         self.ax1.set_title(self.titlestr % (var.name, time/self.tu))
