@@ -1,4 +1,4 @@
-import yaml
+from pyaml import yaml
 import os
 
 configdir = os.path.expanduser("~/.pyrsw")
