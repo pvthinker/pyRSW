@@ -141,7 +141,7 @@ class Timescheme(object):
 
         else:
             # Predictor
-            self.rhs(state, t, self.dstate)
+            self.rhs(state, t, self.dstate, last=True)
             for scalar_name in self.prognostic_scalars:
                 scalar = state.get(scalar_name)
                 s = scalar.view()
