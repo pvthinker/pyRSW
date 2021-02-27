@@ -218,23 +218,36 @@ class RSW(object):
 
     def applybc(self, scalar):
         ny, nx = self.shape
-        # if self.param.geometry == "closed":
-        #     var = scalar.view("j")
-        #     var[..., 0, :] = 0.
-        #     var[..., -1, :] = 0.
-        #     var = scalar.view("i")
-        #     var[..., 0, :] = 0.
-        #     var[..., -1, :] = 0.
-        if (self.param.geometry == "perio_x") and not self.param.openbc:
+        if ("x" in self.param.geometry):
             nh = self.param.nh
             nh2 = nh+nh
             var = scalar.view("i")
-            if scalar.shape[-1] == nx:
-                var[..., :nh] = var[..., -nh2:-nh]
-                var[..., -nh:] = var[..., nh:nh2]
+            if  self.param.openbc:
+                for i in range(var.shape[-1]):
+                    var[:, :nh, i] = var[:, nh, i]
+                    var[:, -nh:, i] = var[:, -nh-1, i]
             else:
-                var[..., :nh+1] = var[..., -nh2-1:-nh]
-                var[..., -nh-1:] = var[..., nh:nh2+1]
+                if scalar.shape[-1] == nx:
+                    var[..., :nh] = var[..., -nh2:-nh]
+                    var[..., -nh:] = var[..., nh:nh2]
+                else:
+                    var[..., :nh+1] = var[..., -nh2-1:-nh]
+                    var[..., -nh-1:] = var[..., nh:nh2+1]
+        if ("y" in self.param.geometry):
+            nh = self.param.nh
+            nh2 = nh+nh
+            var = scalar.view("j")
+            if  self.param.openbc:
+                for i in range(var.shape[-1]):
+                    var[:, :nh, i] = var[:, nh, i]
+                    var[:, -nh:, i] = var[:, -nh-1, i]
+            else:
+                if scalar.shape[-2] == ny:
+                    var[..., :nh] = var[..., -nh2:-nh]
+                    var[..., -nh:] = var[..., nh:nh2]
+                else:
+                    var[..., :nh+1] = var[..., -nh2-1:-nh]
+                    var[..., -nh-1:] = var[..., nh:nh2+1]
 
     def compute_dt(self):
 
