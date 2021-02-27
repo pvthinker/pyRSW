@@ -1,8 +1,16 @@
-from pyaml import yaml
+try:
+    from pyaml import yaml
+except:
+    try:
+        from ruamel import yaml
+    except:
+        raise ValueError("install Python module: pyaml or ruamel")
+
 import os
 
 configdir = os.path.expanduser("~/.pyrsw")
 paramfile = f"{configdir}/defaults.yaml"
+
 
 def get_param():
     with open(paramfile, "r") as f:
@@ -15,6 +23,7 @@ def get_param():
             #print(e, p[topic][e])
             param[e] = p[topic][e]["default"]
     return param
+
 
 class Param(object):
     def __init__(self):
@@ -32,8 +41,9 @@ class Param(object):
             self.toc += [key]
         setattr(self, key, val)
 
+
 if __name__ == "__main__":
-    
+
     param = {"nz": 2, "ny": 5, "nx": 3, "nh": 2}
     neighbours = [(0, -1), (0, 1)]
     param["neighbours"] = neighbours
