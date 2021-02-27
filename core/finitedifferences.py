@@ -91,24 +91,29 @@ def compile(verbose=False):
                     v0 = v1
 
     @cc.export("curl",
-               "void(f8[:, :, :], f8[:, :, :], i1[:, :], i4, i4)")
+               "void(f8[:, :, :], f8[:, :, :], i1[:, :], i1, i1)")
     def curl(v, vort, msk, sign, m0):
         shape = v.shape
         if sign == 1:
+            # dv/di, v is in [k,j,i]
             for k in range(shape[0]):
-                for j in range(1, shape[1]-1):
-                    for i in range(1, shape[2]):
-                        m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
-                        if m >= m0:
-                            vort[k, j, i] += v[k, j, i] - v[k, j, i-1]
+                for j in range(shape[1]):
+                    for i in range(shape[2]):
+                        if msk[j, i] >= m0:
+                            vort[k, j, i] += v[k, j, i]
+                        if msk[j, i+1] >= m0:
+                            vort[k, j, i+1] -= v[k, j, i]
 
         elif sign == -1:
+            # -du/dj, u is in [k,i,j]
             for k in range(shape[0]):
-                for j in range(1, shape[1]-1):
-                    for i in range(1, shape[2]):
-                        m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
-                        if m >= m0:
-                            vort[k, j, i] -= v[k, j, i] - v[k, j, i-1]
+                for j in range(shape[1]):
+                    for i in range(shape[2]):
+                        if msk[j, i] >= m0:
+                            vort[k, j, i] -= v[k, j, i]
+                        if msk[j, i+1] >= m0:
+                            vort[k, j, i+1] += v[k, j, i]
+
 
     @cc.export("totalcurl",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
@@ -125,12 +130,17 @@ def compile(verbose=False):
         nz, ny, nx = shape
         nx -= 1
         for k in range(nz):
-            for j in range(1, ny):
-                for i in range(1, nx):
-                    m = msk[j, i]+msk[j-1, i] + msk[j, i-1]+msk[j-1, i-1]
-                    if m >= 4:
-                        vort[k, j, i] = (v[k, j, i] - v[k, j, i-1]
-                                         - u[k, j, i] + u[k, j-1, i])
+            for j in range(ny):
+                for i in range(nx):
+                    if msk[j,i] >= 4:
+                        vort[k, j, i] += v[k, j, i]
+                    if msk[j,i+1] >= 4:
+                        vort[k, j, i+1] -= v[k, j, i]
+                    if msk[j+1,i] >= 4:
+                        vort[k, j+1, i] -= u[k, j, i]
+                    if msk[j+1,i+1] >= 4:
+                        vort[k, j+1, i+1] += u[k, j, i]
+
 
     @cc.export("compke",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i4)")

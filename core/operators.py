@@ -24,23 +24,23 @@ def vorticity(state, grid, noslip):
             m0 = 1
         else:
             m0 = 4
-        # + dv/dx
+        # + dv/di
         v = state.uy.view("i")
         vor = state.vor.view("i")
-        msk = grid.arrays.msk.view("i")
-        fd.curl(v, vor, msk, 1, m0)
+        mskv = grid.arrays.mskv.view("i")
+        fd.curl(v, vor, mskv, 1, m0)
 
-        # - du/dy
+        # - du/dj
         u = state.ux.view("j")
         vor = state.vor.view("j")
-        msk = grid.arrays.msk.view("j")
-        fd.curl(u, vor, msk, -1, m0)
+        mskv = grid.arrays.mskv.view("j")
+        fd.curl(u, vor, mskv, -1, m0)
     else:
         u = state.ux.view("i")
         v = state.uy.view("i")
         vor = state.vor.view("i")
-        msk = grid.arrays.msk.view("i")
-        fd.totalcurl(u, v, vor, msk)
+        mskv = grid.arrays.mskv.view("i")
+        fd.totalcurl(u, v, vor, mskv)
 
 
 def kinenergy(state, param):

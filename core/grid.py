@@ -58,6 +58,14 @@ gridvar = {
         "dimensions": ["y", "x"],
         "unit": "1",
         "constant": True,
+        "prognostic": False},
+    "mskv": {
+        "type": "vorticity",
+        "dtype": "b",  # 'b' is int8
+        "name": "land mask at corners",
+        "dimensions": ["y", "x"],
+        "unit": "1",
+        "constant": True,
         "prognostic": False}
 }
 
@@ -180,7 +188,7 @@ class Grid(object):
             phi = self.coord.phi(self.je, self.ie)
             theta_shift = param.lat_pole_shift
             f[:] = 2*Omega*(np.sin(theta)*np.cos(theta_shift)
-                            -np.cos(phi)*np.cos(theta)*np.sin(theta_shift))
+                            - np.cos(phi)*np.cos(theta)*np.sin(theta_shift))
             f[:] *= areav
         else:
             f[:] = self.f0*areav
@@ -322,6 +330,18 @@ class Grid(object):
                         dx2 = 1./self.coord.idx2(j, i+0.5)
                         idy2[j, i] = dx2/(area[j-1, i]*area[j, i])
 
+    def set_maskv(self):
+        msk = self.arrays.msk.view("i")
+        mskv = self.arrays.mskv.view("i")
+        mskv[:] = 0.
+        ny, nx = msk.shape
+        for j in range(ny):
+            for i in range(nx):
+                mskv[j, i] += msk[j, i]
+                mskv[j+1, i] += msk[j, i]
+                mskv[j, i+1] += msk[j, i]
+                mskv[j+1, i+1] += msk[j, i]
+
     def finalize(self):
         """
         1/ determine the mask and correct the areas if partialcase
@@ -337,10 +357,15 @@ class Grid(object):
             kwargs = self.boundary["kwargs"]
             self.set_mask(fbry, **kwargs)
 
+        self.set_maskv()
+
         self.arrays.f.view("j")
         self.arrays.f.locked = True
         self.arrays.msk.view("j")
         self.arrays.msk.locked = True
+        self.arrays.mskv.view("j")
+        self.arrays.mskv.locked = True
+
         msk = self.arrays.msk.view("i")
         txporder = self.arrays.tporderx.view("i")
         vyporder = self.arrays.vpordery.view("i")
@@ -405,9 +430,9 @@ def index_tracerflux(msk, order, maxorder):
             else:
                 m5 = 0
 
-            if (m5 == 5) and (maxorder>=5):
+            if (m5 == 5) and (maxorder >= 5):
                 order[j, i1] = 5
-            elif (m3 == 3) and (maxorder>=3):
+            elif (m3 == 3) and (maxorder >= 3):
                 order[j, i1] = 3
             elif m1 >= 1:
                 order[j, i1] = 1
@@ -460,9 +485,9 @@ def index_vortexforce(mskc, order, maxorder):
             else:
                 m5 = 0
 
-            if (m5 > 0) and (maxorder>=5):
+            if (m5 > 0) and (maxorder >= 5):
                 order[j, i1] = 5
-            elif (m3 > 0) and (maxorder>=3):
+            elif (m3 > 0) and (maxorder >= 3):
                 order[j, i1] = 3
             elif m1 > 0:
                 order[j, i1] = 1
