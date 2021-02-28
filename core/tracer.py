@@ -2,7 +2,7 @@ import finitediff as fd
 
 def rhstrac(state, rhs, param, grid, last=False):
     for tracname in state.tracers:
-        trac = state.get(tracname)  # trac is a 'Scalar' instance
+        trac = state.get(tracname)  # trac is a 'Field' instance
         dtrac = rhs.get(tracname)
 
         for direction in 'ij':

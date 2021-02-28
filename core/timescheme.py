@@ -40,7 +40,7 @@ class Timescheme(object):
 
     Attributes:
      - prognostic_scalars: list with the names of prognostic scalars
-        in the model, which can be Scalar variables or the components
+        in the model, which can be Field variables or the components
         of Vector variables
      - dstate: internal instance of the State class used to store
         intermediate steps in the calculation; this State object

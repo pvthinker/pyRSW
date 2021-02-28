@@ -79,14 +79,14 @@ class State(object):
         for nickname, var in variables.items():
 
             if var["type"] == 'scalar':
-                obj = Scalar(nickname, var, param)
+                obj = Field(nickname, var, param)
                 toc[nickname] = var["prognostic"]
 
             elif var["type"] == 'vector':
                 obj = Vector(nickname, var, param)
 
             elif var["type"] == 'vorticity':
-                obj = Scalar(nickname, var, param, stagg="xy")
+                obj = Field(nickname, var, param, stagg="xy")
                 toc[nickname] = var["prognostic"]
 
             setattr(self, nickname, obj)
@@ -141,14 +141,14 @@ class Vector(object):
         self.ndim = len(self.dimensions)
         self.neighbours = param["neighbours"]
 
-        # each component of Vector is a Scalar
+        # each component of Vector is a Field
         # a component is accessed via a dictionary
         vector = {}
         varcopy = var.copy()
         for key, dim in zip("ji", "yx"):
             name = f"{self.name} - {dim} component"
             varcopy["name"] = name
-            vector[key] = Scalar(nickname+dim, varcopy, param, stagg=dim)
+            vector[key] = Field(nickname+dim, varcopy, param, stagg=dim)
         setattr(self, nickname, vector)
 
     def __repr__(self):
@@ -169,7 +169,7 @@ class Vector(object):
         return vector[component]
 
 
-class Scalar(object):
+class Field(object):
     def __init__(self, nickname, var, param, stagg=""):
         self.param = param
         self.nickname = nickname

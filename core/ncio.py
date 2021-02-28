@@ -142,7 +142,7 @@ class Ncio(object):
             else:
                 raise ValueError
             # Spatial dimensions are in reversed order, because
-            # the arrays are stored like this in the Scalar class
+            # the arrays are stored like this in the Field class
             dims0 = []
             if not var["constant"]:
                 dims0 += ["t"]

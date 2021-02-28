@@ -3,7 +3,6 @@
 """
 
 import numpy as np
-from variables import Scalar
 import topology as topo
 import variables
 import coordinates
