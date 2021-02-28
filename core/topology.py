@@ -220,7 +220,6 @@ def get_variable_shape(innersize, ngbs, nh):
     return size, domainindices
 
 
-
 def check_graph(allneighbours):
     """
     build the connectivity matrix of the neighbours graph
@@ -390,3 +389,50 @@ def get_mypartners(procs, incr, incr_next, myrank):
         # set each partner at its position in the matrix
         mat[z, y, x] = p
     return mat
+
+
+def get_shape_and_domainindices(param, dimensions, stagg):
+    """
+    return the shape and the interior domain indices of an array
+
+    Parameters
+    ----------
+    dimensions: list or str of array dimensions (e.g. "yx")
+    staggering: str indicating staggered dimensions (e.g. "x" if staggered in "x")
+    param: the model param from which we pick neighbours and nh
+
+    Returns
+    -------
+    shape: list, size of each dimension (in "kji" convention)
+    domainindices: tuple, for each dimension, the pair of starting and ending indices
+    """
+    neighbours = param.neighbours
+    nh = param.nh
+
+    shape = []
+    domainindices = []
+    for dim in "zyx":
+        if dim == "x":
+            leftneighb = (0, 0, -1) in neighbours
+            rightneighb = (0, 0, +1) in neighbours
+        elif dim == "y":
+            leftneighb = (0, -1, 0) in neighbours
+            rightneighb = (0, +1, 0) in neighbours
+        else:
+            leftneighb = rightneighb = False
+
+        if dim in dimensions:
+            nelem = param[f"n{dim}"]
+            staggered = (dim in stagg)
+            if staggered:
+                nelem += 1
+            if leftneighb:
+                domainindices += [nh, nh+nelem]
+                nelem += nh
+            else:
+                domainindices += [0, nelem]
+            if rightneighb:
+                nelem += nh
+            shape += [nelem]
+
+    return shape, domainindices

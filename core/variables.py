@@ -1,4 +1,5 @@
 import numpy as np
+import topology as topo
 
 modelvar = {
     "h": {
@@ -188,31 +189,8 @@ class Scalar(object):
         neighbours = param["neighbours"]
         self.neighbours = neighbours
 
-        shape = []
-        domainindices = []
-        for dim in "zyx":
-            if dim == "x":
-                leftneighb = (0, 0, -1) in neighbours
-                rightneighb = (0, 0, +1) in neighbours
-            elif dim == "y":
-                leftneighb = (0, -1, 0) in neighbours
-                rightneighb = (0, +1, 0) in neighbours
-            else:
-                leftneighb = rightneighb = False
-
-            if dim in self.dimensions:
-                nelem = param[f"n{dim}"]
-                staggered = (dim in stagg)
-                if staggered:
-                    nelem += 1
-                if leftneighb:
-                    domainindices += [nh, nh+nelem]
-                    nelem += nh
-                else:
-                    domainindices += [0, nelem]
-                if rightneighb:
-                    nelem += nh
-                shape += [nelem]
+        shape, domainindices = topo.get_shape_and_domainindices(
+            param, self.dimensions, stagg)
 
         self.domainindices = tuple(domainindices)
 

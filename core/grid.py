@@ -134,14 +134,12 @@ class Grid(object):
 
         self.partialcell = param.partialcell
 
-        var = {"name": "", "unit": "",
-               "prognostic": False, "dimensions": ["y", "x"]}
         # at cell centers
-        dummy = Scalar("dummy", var, param, stagg="")
-        ny, nx = dummy.shape
+        shape, domainindices = topo.get_shape_and_domainindices(param, "yx", "")
+        ny, nx = shape
         self.shape = (ny, nx)
 
-        j0, j1, i0, i1 = dummy.domainindices
+        j0, j1, i0, i1 = domainindices
 
         if param.coordinates == "cartesian":
             self.coord = coordinates.Cartesian(param)
