@@ -178,6 +178,7 @@ class Field(object):
         self.unit = var["unit"]
         self.prognostic = var["prognostic"]
         self.dimensions = var["dimensions"]
+        self.stagg = stagg
         self.ndim = len(self.dimensions)
         if "dtype" in var:
             self.dtype = var["dtype"]
