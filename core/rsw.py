@@ -1,3 +1,6 @@
+import timescheme as ts
+import tracer
+import operators
 from ncio import Ncio
 import plotting
 import numpy as np
@@ -29,9 +32,6 @@ if not fullycompiled:
     print("compilation completed".center(80, "-"))
 
 # can be imported ONLY IF compilation is done
-import operators
-import tracer
-import timescheme as ts
 
 # check pyRSW is properly installed
 if os.path.isdir(parameters.configdir):
@@ -47,7 +47,7 @@ class RSW(object):
     def __init__(self, param, grid):
         self.param = param
         self.grid = grid
-        self.shape = grid.shape
+        self.outershape = grid.outershape
         self.banner()
         self.state = variables.State(param, variables.modelvar)
         self.state.tracers = ["h"]  # <- TODO improve for the general case
@@ -58,7 +58,8 @@ class RSW(object):
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
-        self.print_recap()
+        if param.myrank == 0:
+            self.print_recap()
 
     def fix_density(self):
         """ Transform param.rho into a numpy array
@@ -73,7 +74,7 @@ class RSW(object):
     def run(self):
 
         self.io = Ncio(self.param, self.grid, self.state)
-
+        print("ok")
         if self.param.myrank == 0:
             print(f"Creating output file: {self.io.hist_path}")
             print(f"Backing up script to: {self.io.script_path}")
@@ -106,6 +107,7 @@ class RSW(object):
         ngridpoints = self.param.nx*self.param.ny*self.param.nz
         walltime = time.time()
         starttime = walltime
+        blowup = False
         while self.ok:
             walltime0 = walltime
 
@@ -150,7 +152,8 @@ class RSW(object):
             tu = self.param.timeunit
 
             time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
-            print(time_string, end="")
+            if self.param.myrank == 0:
+                print(time_string, end="")
 
         if self.param.plot_interactive:
             fig.finalize()
@@ -163,8 +166,13 @@ class RSW(object):
             print()
             print(self.termination_status)
             wt = walltime-starttime
-            print(f"Wall time: {wt:.3} s -- {wt/kite:.2e} s/iteration")
+            if kite>0:
+                print(f"Wall time: {wt:.3} s -- {wt/kite:.2e} s/iteration")
             print(f"Output written to: {self.io.hist_path}")
+
+        if np.prod(self.param.procs)>1:
+            from mpi4py import MPI
+            MPI.COMM_WORLD.Barrier()
 
     def forward(self):
         self.timescheme.forward(self.state, self.t, self.dt)
@@ -197,12 +205,12 @@ class RSW(object):
             operators.kinenergy(state, self.param)
 
         self.applybc(state.vor)
-        # if self.param.noslip:
-        #     self.applynoslip(state)
         operators.montgomery(state, self.grid, self.param)
 
     def diagnose_supplementary(self, state):
+        return
         operators.comppv_c(state, self.grid)
+
 
     def applynoslip(self, state):
         if self.param.geometry == "closed":
@@ -217,12 +225,14 @@ class RSW(object):
             vor[..., -1] = -v[..., -1]
 
     def applybc(self, scalar):
-        ny, nx = self.shape
+        self.grid.halo.fill(scalar)
+        return
+        ny, nx = self.outershape
         if ("x" in self.param.geometry):
             nh = self.param.nh
             nh2 = nh+nh
             var = scalar.view("i")
-            if  self.param.openbc:
+            if self.param.openbc:
                 for i in range(var.shape[-1]):
                     var[:, :nh, i] = var[:, nh, i]
                     var[:, -nh:, i] = var[:, -nh-1, i]
@@ -237,7 +247,7 @@ class RSW(object):
             nh = self.param.nh
             nh2 = nh+nh
             var = scalar.view("j")
-            if  self.param.openbc:
+            if self.param.openbc:
                 for i in range(var.shape[-1]):
                     var[:, :nh, i] = var[:, nh, i]
                     var[:, -nh:, i] = var[:, -nh-1, i]
@@ -284,15 +294,22 @@ class RSW(object):
         else:
             nblayers = param.nz
         ny, nx = param.ny, param.nx
+        npy, npx = param.npy, param.npx
         if not param.VF_linear and not param.MF_linear and (param.VF_order == 5) and (param.MF_order == 5):
             numerics = "numerics: weno 5th on vorticity and mass flux"
         else:
             numerics = "numerics: you're not using the best combination"
 
+        ncores = np.prod(param.procs)
+        if ncores > 1:
+            parallel = f"parallel computation with {ncores} cores: {param.npy} x {param.npx}"
+        else:
+            parallel = "single core computation, no subdomains"
         print(f"  Experiment: {param.expname}")
         print(
-            f"  grid size : {nblayers} layer{s} {ny} x {nx} in {param.coordinates} coordinates")
+            f"  grid size : {nblayers} layer{s} {npy*ny} x {npx*nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
+        print(f"  {parallel}")
         print("")
 
     def banner(self):

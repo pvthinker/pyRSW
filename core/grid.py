@@ -6,12 +6,7 @@ import numpy as np
 import topology as topo
 import variables
 import coordinates
-# try:
-#     import mindexing
-# except:
-#     import mask_stencils as ms
-#     ms.compile()
-#     import mindexing
+import halo
 from numba import jit
 
 gridvar = {
@@ -102,19 +97,27 @@ gridvar[nickname] = {
 def set_domain_decomposition(param):
     topo.topology = param["geometry"]
     procs = [1, param["npy"], param["npx"]]
-    myrank = 0  # mpitools.get_myrank(procs)
+    if np.prod(procs) > 1:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        myrank = comm.Get_rank()
+    else:
+        myrank = 0
     loc = topo.rank2loc(myrank, procs)
     neighbours = topo.get_neighbours(loc, procs)
     param["procs"] = procs
     param["myrank"] = myrank
     param["neighbours"] = neighbours
     param["loc"] = loc
+    #print(myrank, "param.loc=", loc)
 
 
 class Grid(object):
     def __init__(self, param):
-        self.param = param
         set_domain_decomposition(param)
+        self.param = param
+
+        self.halo = halo.Halo(param)
 
         self.arrays = variables.State(param, gridvar)
         # set msk to 1
@@ -134,12 +137,14 @@ class Grid(object):
         self.partialcell = param.partialcell
 
         # at cell centers
-        shape, domainindices = topo.get_shape_and_domainindices(param, "yx", "")
+        shape, domainindices = topo.get_shape_and_domainindices(
+            param, "yx", "")
         ny, nx = shape
-        self.shape = (ny, nx)
+        self.outershape = (ny, nx)
+        self.innershape = (self.nz, self.ny, self.nx)
 
         j0, j1, i0, i1 = domainindices
-
+        #print("cartesian", self.param.myrank, j0, j1, i0, i1)
         if param.coordinates == "cartesian":
             self.coord = coordinates.Cartesian(param)
 

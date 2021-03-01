@@ -43,22 +43,23 @@ class Ncio(object):
             shutil.copyfile(filename, self.script_path)
 
     def create_diagnostic_file(self, diags):
-        with Dataset(self.diag_path, "w", format='NETCDF4') as nc:
-            nc.createDimension("t", None)
-            d = nc.createVariable("t", "f", ("t",))
-            d.long_name = "model time"
-            d = nc.createVariable("kt", "i", ("t",))
-            d.long_name = "model iteration"
+        if self.param.myrank == 0:
+            with Dataset(self.diag_path, "w", format='NETCDF4') as nc:
+                nc.createDimension("t", None)
+                d = nc.createVariable("t", "f", ("t",))
+                d.long_name = "model time"
+                d = nc.createVariable("kt", "i", ("t",))
+                d.long_name = "model iteration"
 
-            for v in diags:
-                d = nc.createVariable(v, "f", ("t",))
-                d.long_name = v
+                for v in diags:
+                    d = nc.createVariable(v, "f", ("t",))
+                    d.long_name = v
 
     def create_history_file(self, state):
         self.gridvar = ["msk", "f", "hb"]
-        for nickname in state.variables:
-            if state.variables[nickname]["constant"]:
-                self.gridvar += [nickname]
+        # for nickname in state.variables:
+        #     if state.variables[nickname]["constant"]:
+        #         self.gridvar += [nickname]
 
         with Dataset(self.hist_path, "w", format='NETCDF4') as nc:
             # Store the experiment parameters
@@ -72,6 +73,12 @@ class Ncio(object):
                 # force 32 bits integers (default is 64 in Python)
                 if isinstance(attrs[key], int):
                     attrs[key] = np.int32(attrs[key])
+                # force 32 bits in list of integers (namely, loc and procs)
+                if isinstance(attrs[key], list):
+                    for k, elem in enumerate(attrs[key]):
+                        if isinstance(elem, int):
+                            attrs[key][k] = np.int32(elem)
+
             nc.setncatts(attrs)
 
             self.ndim = self.grid.xc.ndim
@@ -148,6 +155,7 @@ class Ncio(object):
                 dims0 += ["t"]
             if "z" in var["dimensions"]:
                 dims0 += ["z"]
+
             if var["type"] == "scalar":
                 dims = dims0 + ["yc", "xc"]
                 self.createvar(nickname, dims, var["name"], var["unit"])
@@ -161,6 +169,7 @@ class Ncio(object):
                 dims = dims0 + ["ye", "xc"]
                 self.createvar(nickname+"y", dims,
                                var["name"]+" y-component", var["unit"])
+
 
         with Dataset(self.hist_path, "r+") as nc:
             nc.variables["xc"][:] = self.grid.xc
@@ -176,6 +185,7 @@ class Ncio(object):
                 nc.variables[nickname][:] = data
 
     def createvar(self, nickname, dims, name, unit):
+        # print(f"create variable {nickname}")
         with Dataset(self.hist_path, "r+", format='NETCDF4') as nc:
             v = nc.createVariable(nickname, self.dtype, tuple(dims))
             v.standard_name = name
@@ -193,9 +203,10 @@ class Ncio(object):
         self.kt += 1
 
     def dodiags(self, diags, time, kt):
-        with Dataset(self.diag_path, "r+") as nc:
-            nc.variables["t"][self.ktdiag] = time
-            nc.variables["kt"][self.ktdiag] = kt
-            for key, val in diags.items():
-                nc.variables[key][self.ktdiag] = val
-        self.ktdiag += 1
+        if self.param.myrank == 0:
+            with Dataset(self.diag_path, "r+") as nc:
+                nc.variables["t"][self.ktdiag] = time
+                nc.variables["kt"][self.ktdiag] = kt
+                for key, val in diags.items():
+                    nc.variables[key][self.ktdiag] = val
+            self.ktdiag += 1

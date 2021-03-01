@@ -6,23 +6,24 @@ class Cartesian():
         self.param = param
         self.dx = param.Lx / (param.npx*param.nx)
         self.dy = param.Ly / (param.npy*param.ny)
-        self.i0 = param['loc'][1]
-        self.j0 = param['loc'][0]
+        self.i0 = param['loc'][-1]*param.nx
+        self.j0 = param['loc'][-2]*param.ny
+        #print(param.myrank, self.j0, self.i0)
 
     def x(self, j, i):
-        return self.i0+index(j, i+self.i0, "i")*self.dx
+        return index(j+self.j0, i+self.i0, "i")*self.dx
 
     def y(self, j, i):
-        return index(j+self.j0, i, "j")*self.dy
+        return index(j+self.j0, i+self.i0, "j")*self.dy
 
     def idx2(self, j, i):
-        return ones(j, i)*(1/self.dx**2)
+        return ones(j+self.j0, i+self.i0)*(1/self.dx**2)
 
     def idy2(self, j, i):
-        return ones(j, i)*(1/self.dy**2)
+        return ones(j+self.j0, i+self.i0)*(1/self.dy**2)
 
     def area(self, j, i):
-        return ones(j, i)*self.dx*self.dy
+        return ones(j+self.j0, i+self.i0)*self.dx*self.dy
 
 
 class Cylindrical():
@@ -30,8 +31,8 @@ class Cylindrical():
         self.param = param
         self.dtheta = (param.theta[1]-param.theta[0]) / (param.npx*param.nx)
         self.dr = (param.r[1]-param.r[0]) / (param.npy*param.ny)
-        self.i0 = param['loc'][1]
-        self.j0 = param['loc'][0]
+        self.i0 = param['loc'][1]*param.nx
+        self.j0 = param['loc'][0]*param.ny
 
     def theta(self, j, i):
         """ theta """
@@ -70,8 +71,8 @@ class Spherical():
         self.dtheta = (param.theta[1]-param.theta[0]) / (param.npy*param.ny)
         self.dphi = (param.phi[1]-param.phi[0]) / (param.npx*param.nx)
         self.a = param.sphere_radius
-        self.i0 = param['loc'][1]
-        self.j0 = param['loc'][0]
+        self.i0 = param['loc'][1]*param.nx
+        self.j0 = param['loc'][0]*param.ny
 
     def theta(self, j, i):
         """ theta """
