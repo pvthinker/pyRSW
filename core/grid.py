@@ -8,14 +8,14 @@ import variables
 import coordinates
 
 try:
-    import buffers
+    import buffers_halo
 except:
     import buffershalo as BH
     BH.compile()
     fullycompiled = False
 
 import halo
-from numba import jit
+#from numba import jit
 
 gridvar = {
     "hb": {
@@ -395,7 +395,7 @@ class Grid(object):
         ny, nx = mskc.shape
         msku = np.zeros((ny, nx+1), dtype=np.int8)
         for j in range(ny):
-            for i in range(nx-1):
+            for i in range(1, nx):
                 if mskc[j, i-1]+mskc[j, i] == 2:
                     msku[j, i] = 1
         return msku
@@ -405,7 +405,7 @@ class Grid(object):
         ny, nx = mskc.shape
         msku = np.zeros((ny, nx+1), dtype=np.int8)
         for j in range(ny):
-            for i in range(nx-1):
+            for i in range(1, nx):
                 if mskc[j, i-1]+mskc[j, i] == 2:
                     msku[j, i] = 1
         return msku

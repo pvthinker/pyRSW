@@ -399,6 +399,7 @@ def compile(verbose=False):
             for i in range(1, nx):
                 if msk[j-1, i]+msk[j-1, i-1]+msk[j, i]+msk[j, i-1] == 4:
                     mskv[j, i] = 1
+
         for k in range(nz):
             b = p[k]+ke[k]
             W = vor[k]+f
@@ -427,13 +428,13 @@ def compile(verbose=False):
                 B[j, nx] = b1*cff[m1]
 
             for j in range(ny):
-                for i in range(1, nx-1):
+                for i in range(1, nx):
                     w = (W[j+1, i]+W[j, i])*0.5
                     if mskv[j+1, i]+mskv[j, i] == 2:
                         u[k, j, i] = -(B[j+1, i]-B[j, i])/w
                     u[k, j, i] *= dx2[j, i]
 
-            for j in range(1, ny-1):
+            for j in range(1, ny):
                 for i in range(nx):
                     w = (W[j, i+1]+W[j, i])*0.5
                     if mskv[j, i+1]+mskv[j, i] == 2:

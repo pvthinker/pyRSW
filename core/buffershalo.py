@@ -1,7 +1,7 @@
 from numba.pycc import CC
+import numpy as np
 
-
-fillvalue = 1e-12
+fillvalue = np.nan#1e-12
 
 
 def compile(verbose=False):
