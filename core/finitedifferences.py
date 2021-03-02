@@ -391,7 +391,7 @@ def compile(verbose=False):
     @cc.export("set_geostrophic_vel",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :], f8[:, :], f8[:, :], i1[:, :])")
     def set_geostrophic_vel(u, v, vor, p, ke, dx2, dy2, f, msk):
-        nz, ny, nx = np.shape(p)
+        nz, ny, nx = p.shape
         B = np.zeros((ny+1, nx+1))
         mskv = np.zeros_like(msk)
         cff = [0., 1., 0.5, 1./3, 0.25]
