@@ -310,8 +310,8 @@ def compile(verbose=False):
                             dv[k, j, i] -= Um*(qi+ff)
 
     @cc.export("upwindtrac",
-               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :], boolean)")
-    def upwindtrac(field, U, dfield, order, linear):
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :], boolean,i4, i4, i4, i4)")
+    def upwindtrac(field, U, dfield, order, linear, j0, j1, i0, i1):
         nz, ny, nx = field.shape
 
         assert order.shape == (ny, nx+1)
@@ -355,38 +355,38 @@ def compile(verbose=False):
                     dfield[k, j, i] += f
                     dfield[k, j, i-1] -= f
         else:
-            for I in np.ndindex(nz, ny):
-                k, j = I
-                q = field[k, j]
-                for i in range(1, nx):
-                    if U[k, j, i] > 0:
-                        porder = order[j, i]
-                        if porder == 5:
-                            #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
-                            qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
-                        elif porder == 3:
-                            #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
-                            qi = weno3(q[i-2], q[i-1], q[i], 1)
-                        elif porder == 1:
-                            qi = q[i-1]
+            for k in range(nz):
+                for j in range(j0, j1):
+                    q = field[k, j]
+                    for i in range(i0, i1):
+                        if U[k, j, i] > 0:
+                            porder = order[j, i]
+                            if porder == 5:
+                                #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
+                                qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
+                            elif porder == 3:
+                                #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
+                                qi = weno3(q[i-2], q[i-1], q[i], 1)
+                            elif porder == 1:
+                                qi = q[i-1]
+                            else:
+                                qi = 0.
                         else:
-                            qi = 0.
-                    else:
-                        morder = order[j, i+1]
-                        if morder == 5:
-                            # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
-                            qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
-                        elif morder == 3:
-                            #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
-                            qi = weno3(q[i+1], q[i], q[i-1], 1)
-                        elif morder == 1:
-                            qi = q[i]
-                        else:
-                            qi = 0.
+                            morder = order[j, i+1]
+                            if morder == 5:
+                                # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
+                                qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
+                            elif morder == 3:
+                                #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
+                                qi = weno3(q[i+1], q[i], q[i-1], 1)
+                            elif morder == 1:
+                                qi = q[i]
+                            else:
+                                qi = 0.
 
-                    f = U[k, j, i]*qi
-                    dfield[k, j, i] += f
-                    dfield[k, j, i-1] -= f
+                        f = U[k, j, i]*qi
+                        dfield[k, j, i] += f
+                        dfield[k, j, i-1] -= f
 
     @cc.export("set_geostrophic_vel",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :], f8[:, :], f8[:, :], i1[:, :])")
