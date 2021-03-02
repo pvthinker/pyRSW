@@ -52,7 +52,6 @@ class RSW(object):
         self.state = variables.State(param, variables.modelvar)
         self.state.tracers = ["h"]  # <- TODO improve for the general case
         self.fix_density()
-        # self.set_coriolis()
         self.bulk = Bulk(param, grid)
         self.diags = {}
         self.timescheme = ts.Timescheme(param, self.state)
@@ -72,9 +71,13 @@ class RSW(object):
             self.param.rho = np.asarray(self.param.rho)
 
     def run(self):
+        nprocs = np.prod(self.param.procs)
+        if nprocs > 1:
+            from mpi4py import MPI
+            MPI.COMM_WORLD.Barrier()
 
         self.io = Ncio(self.param, self.grid, self.state)
-        print("ok")
+
         if self.param.myrank == 0:
             print(f"Creating output file: {self.io.hist_path}")
             print(f"Backing up script to: {self.io.script_path}")
@@ -108,9 +111,12 @@ class RSW(object):
         walltime = time.time()
         starttime = walltime
         blowup = False
+
         while self.ok:
             walltime0 = walltime
 
+            if nprocs > 1:
+                MPI.COMM_WORLD.Barrier()
             self.dt = self.compute_dt()
             blowup = self.forward()
             if blowup:
@@ -153,7 +159,7 @@ class RSW(object):
 
             time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
             if self.param.myrank == 0:
-                print(time_string, end="")
+                print(time_string, end="", flush=True)
 
         if self.param.plot_interactive:
             fig.finalize()
@@ -164,20 +170,24 @@ class RSW(object):
 
         if self.param.myrank == 0:
             print()
-            print(self.termination_status)
+            print(self.termination_status, flush=True)
+
             wt = walltime-starttime
-            if kite>0:
+            if kite > 0:
                 print(f"Wall time: {wt:.3} s -- {wt/kite:.2e} s/iteration")
             print(f"Output written to: {self.io.hist_path}")
 
-        if np.prod(self.param.procs)>1:
-            from mpi4py import MPI
+        if np.prod(self.param.procs) > 1:
             MPI.COMM_WORLD.Barrier()
+            if blowup:
+                print()
+                print(f"blowup detected by rank={self.param.myrank}")
+                MPI.COMM_WORLD.Abort()
 
     def forward(self):
         self.timescheme.forward(self.state, self.t, self.dt)
         h = self.state.h[:]
-        blowup = any(np.isnan(h.flat)) or any(h.flat < 0)
+        blowup = any(np.isnan(h.flat)) #or any(h.flat < 0)
         return blowup
 
     def rhs(self, state, t, dstate, last=False):
@@ -208,9 +218,7 @@ class RSW(object):
         operators.montgomery(state, self.grid, self.param)
 
     def diagnose_supplementary(self, state):
-        return
         operators.comppv_c(state, self.grid)
-
 
     def applynoslip(self, state):
         if self.param.geometry == "closed":
@@ -226,38 +234,38 @@ class RSW(object):
 
     def applybc(self, scalar):
         self.grid.halo.fill(scalar)
-        return
-        ny, nx = self.outershape
-        if ("x" in self.param.geometry):
-            nh = self.param.nh
-            nh2 = nh+nh
-            var = scalar.view("i")
-            if self.param.openbc:
-                for i in range(var.shape[-1]):
-                    var[:, :nh, i] = var[:, nh, i]
-                    var[:, -nh:, i] = var[:, -nh-1, i]
-            else:
-                if scalar.shape[-1] == nx:
-                    var[..., :nh] = var[..., -nh2:-nh]
-                    var[..., -nh:] = var[..., nh:nh2]
-                else:
-                    var[..., :nh+1] = var[..., -nh2-1:-nh]
-                    var[..., -nh-1:] = var[..., nh:nh2+1]
-        if ("y" in self.param.geometry):
-            nh = self.param.nh
-            nh2 = nh+nh
-            var = scalar.view("j")
-            if self.param.openbc:
-                for i in range(var.shape[-1]):
-                    var[:, :nh, i] = var[:, nh, i]
-                    var[:, -nh:, i] = var[:, -nh-1, i]
-            else:
-                if scalar.shape[-2] == ny:
-                    var[..., :nh] = var[..., -nh2:-nh]
-                    var[..., -nh:] = var[..., nh:nh2]
-                else:
-                    var[..., :nh+1] = var[..., -nh2-1:-nh]
-                    var[..., -nh-1:] = var[..., nh:nh2+1]
+        # return
+        # ny, nx = self.outershape
+        # if ("x" in self.param.geometry):
+        #     nh = self.param.nh
+        #     nh2 = nh+nh
+        #     var = scalar.view("i")
+        #     if self.param.openbc:
+        #         for i in range(var.shape[-1]):
+        #             var[:, :nh, i] = var[:, nh, i]
+        #             var[:, -nh:, i] = var[:, -nh-1, i]
+        #     else:
+        #         if scalar.shape[-1] == nx:
+        #             var[..., :nh] = var[..., -nh2:-nh]
+        #             var[..., -nh:] = var[..., nh:nh2]
+        #         else:
+        #             var[..., :nh+1] = var[..., -nh2-1:-nh]
+        #             var[..., -nh-1:] = var[..., nh:nh2+1]
+        # if ("y" in self.param.geometry):
+        #     nh = self.param.nh
+        #     nh2 = nh+nh
+        #     var = scalar.view("j")
+        #     if self.param.openbc:
+        #         for i in range(var.shape[-1]):
+        #             var[:, :nh, i] = var[:, nh, i]
+        #             var[:, -nh:, i] = var[:, -nh-1, i]
+        #     else:
+        #         if scalar.shape[-2] == ny:
+        #             var[..., :nh] = var[..., -nh2:-nh]
+        #             var[..., -nh:] = var[..., nh:nh2]
+        #         else:
+        #             var[..., :nh+1] = var[..., -nh2-1:-nh]
+        #             var[..., -nh-1:] = var[..., nh:nh2+1]
 
     def compute_dt(self):
 

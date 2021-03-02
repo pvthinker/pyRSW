@@ -114,7 +114,6 @@ def compile(verbose=False):
                         if msk[j, i+1] >= m0:
                             vort[k, j, i+1] += v[k, j, i]
 
-
     @cc.export("totalcurl",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
     def totalcurl(u, v, vort, msk):
@@ -132,15 +131,14 @@ def compile(verbose=False):
         for k in range(nz):
             for j in range(ny):
                 for i in range(nx):
-                    if msk[j,i] >= 4:
+                    if msk[j, i] >= 4:
                         vort[k, j, i] += v[k, j, i]
-                    if msk[j,i+1] >= 4:
+                    if msk[j, i+1] >= 4:
                         vort[k, j, i+1] -= v[k, j, i]
-                    if msk[j+1,i] >= 4:
+                    if msk[j+1, i] >= 4:
                         vort[k, j+1, i] -= u[k, j, i]
-                    if msk[j+1,i+1] >= 4:
+                    if msk[j+1, i+1] >= 4:
                         vort[k, j+1, i+1] += u[k, j, i]
-
 
     @cc.export("compke",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i4)")
@@ -322,7 +320,7 @@ def compile(verbose=False):
             for I in np.ndindex(nz, ny):
                 k, j = I
                 q = field[k, j]
-                for i in range(1, nx+1):
+                for i in range(1, nx):
                     if U[k, j, i] > 0:
                         porder = order[j, i]
                         if porder == 5:
@@ -360,7 +358,7 @@ def compile(verbose=False):
             for I in np.ndindex(nz, ny):
                 k, j = I
                 q = field[k, j]
-                for i in range(1, nx+1):
+                for i in range(1, nx):
                     if U[k, j, i] > 0:
                         porder = order[j, i]
                         if porder == 5:
@@ -374,10 +372,7 @@ def compile(verbose=False):
                         else:
                             qi = 0.
                     else:
-                        if i < nx:
-                            morder = order[j, i+1]
-                        else:
-                            morder = 0
+                        morder = order[j, i+1]
                         if morder == 5:
                             # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
                             qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)

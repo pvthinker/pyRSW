@@ -97,10 +97,12 @@ gridvar[nickname] = {
 def set_domain_decomposition(param):
     topo.topology = param["geometry"]
     procs = [1, param["npy"], param["npx"]]
-    if np.prod(procs) > 1:
+    nprocs = np.prod(procs)
+    if nprocs > 1:
         from mpi4py import MPI
         comm = MPI.COMM_WORLD
         myrank = comm.Get_rank()
+        assert nprocs == comm.Get_size()
     else:
         myrank = 0
     loc = topo.rank2loc(myrank, procs)
@@ -415,10 +417,11 @@ def index_tracerflux(msk, order, maxorder):
     assert order.shape == (ny, nx+1)
     for j in range(ny):
         m = msk[j]
-        for i1 in range(nx+1):
-            i = i1
+        for i in range(nx+1):
             if (i >= 1) and (i < nx):
                 m1 = m[i-1]+m[i]
+            elif (i == 0):
+                m1 = m[i]
             elif (i == nx):
                 m1 = m[i-1]
             else:
@@ -433,13 +436,13 @@ def index_tracerflux(msk, order, maxorder):
                 m5 = 0
 
             if (m5 == 5) and (maxorder >= 5):
-                order[j, i1] = 5
+                order[j, i] = 5
             elif (m3 == 3) and (maxorder >= 3):
-                order[j, i1] = 3
-            elif m1 >= 1:
-                order[j, i1] = 1
+                order[j, i] = 3
+            elif (m1 > 0) or (i == nx):
+                order[j, i] = 1
             else:
-                order[j, i1] = 0
+                order[j, i] = 0
 
 
 # @jit
@@ -472,8 +475,7 @@ def index_vortexforce(mskc, order, maxorder):
 
     for j in range(ny+1):
         m = mskv[j]
-        for i1 in range(nx+1):
-            i = i1
+        for i in range(nx+1):
             if (i >= 0) and (i < nx+1):
                 m1 = m[i]
             else:
@@ -488,10 +490,10 @@ def index_vortexforce(mskc, order, maxorder):
                 m5 = 0
 
             if (m5 > 0) and (maxorder >= 5):
-                order[j, i1] = 5
+                order[j, i] = 5
             elif (m3 > 0) and (maxorder >= 3):
-                order[j, i1] = 3
+                order[j, i] = 3
             elif m1 > 0:
-                order[j, i1] = 1
+                order[j, i] = 1
             else:
-                order[j, i1] = 0
+                order[j, i] = 0

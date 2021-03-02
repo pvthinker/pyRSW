@@ -28,8 +28,8 @@ class Ncio(object):
         self.script_path = os.path.join(out_dir, f"{expname}.py")
         self.output_directory = out_dir
         # Create the output directory if necessary
-        if not os.path.isdir(self.output_directory):
-            if param.myrank == 0:
+        if param.myrank == 0:
+            if not os.path.isdir(self.output_directory):
                 os.makedirs(self.output_directory)
         self.dtype = np.dtype(self.param.hisdtype)
 
