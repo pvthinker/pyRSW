@@ -1,6 +1,3 @@
-import timescheme as ts
-import tracer
-import operators
 from ncio import Ncio
 import plotting
 import numpy as np
@@ -27,6 +24,12 @@ except:
     import optimizers as OPT
     OPT.compile()
     fullycompiled = False
+
+
+# operators, tracer and timescheme need to be imported AFTER the compilation
+import operators
+import tracer
+import timescheme as ts
 
 if not fullycompiled:
     print("compilation completed".center(80, "-"))

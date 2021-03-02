@@ -6,6 +6,14 @@ import numpy as np
 import topology as topo
 import variables
 import coordinates
+
+try:
+    import buffers
+except:
+    import buffershalo as BH
+    BH.compile()
+    fullycompiled = False
+
 import halo
 from numba import jit
 
