@@ -83,7 +83,7 @@ def compile(verbose=False):
         nz, ny, nx = h.shape
         for k in range(nz):
             for j in range(j0, j1):
-                v0 = vor[k, j+1, 0]+vor[k, j, 0]+f[j, 0]+f[j+1, 0]
+                v0 = vor[k, j+1, i0]+vor[k, j, i0]+f[j, i0]+f[j+1, i0]
                 for i in range(i0, i1):
                     v1 = vor[k, j+1, i+1]+vor[k, j, i+1]+f[j, i+1]+f[j+1, i+1]
                     vm = (v1+v0)*.25
