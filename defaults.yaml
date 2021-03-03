@@ -149,6 +149,11 @@ output:
         doc: Whether to store the arrays with the halo or not
         type: bool
 
+    singlefile:
+        default: True
+        doc: Whether to write a single history file or one per core
+        type: bool
+
     freq_diag:
         default: 0.05
         doc: Interval of time between two outputs in the diag file
