@@ -209,4 +209,4 @@ class Ncio(object):
                 nc.variables["kt"][self.ktdiag] = kt
                 for key, val in diags.items():
                     nc.variables[key][self.ktdiag] = val
-            self.ktdiag += 1
+        self.ktdiag += 1

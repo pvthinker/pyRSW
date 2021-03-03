@@ -4,7 +4,6 @@ import numpy as np
 import sys
 import signal
 import variables
-from bulk import Bulk
 import parameters
 import time
 import os
@@ -30,6 +29,7 @@ except:
 import operators
 import tracer
 import timescheme as ts
+from bulk import Bulk
 
 if not fullycompiled:
     print("compilation completed".center(80, "-"))

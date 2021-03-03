@@ -363,7 +363,8 @@ def compile(verbose=False):
                             porder = order[j, i]
                             if porder == 5:
                                 #qi = d1*q[i-2]+d2*q[i-1]+d3*q[i]+d4*q[i+1]+d5*q[i+2]
-                                qi = weno5(q[i-3], q[i-2], q[i-1], q[i], q[i+1], 1)
+                                qi = weno5(q[i-3], q[i-2], q[i-1],
+                                           q[i], q[i+1], 1)
                             elif porder == 3:
                                 #qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
                                 qi = weno3(q[i-2], q[i-1], q[i], 1)
@@ -375,7 +376,8 @@ def compile(verbose=False):
                             morder = order[j, i+1]
                             if morder == 5:
                                 # qi = d5*q[i-1]+d4*q[i]+d3*q[i+1]+d2*q[i+2]+d1*q[i+3]
-                                qi = weno5(q[i+2], q[i+1], q[i], q[i-1], q[i-2], 1)
+                                qi = weno5(q[i+2], q[i+1], q[i],
+                                           q[i-1], q[i-2], 1)
                             elif morder == 3:
                                 #qi = c3*q[i]+c2*q[i+1]+c1*q[i+2]
                                 qi = weno3(q[i+1], q[i], q[i-1], 1)
@@ -387,6 +389,34 @@ def compile(verbose=False):
                         f = U[k, j, i]*qi
                         dfield[k, j, i] += f
                         dfield[k, j, i-1] -= f
+
+    @cc.export("sum_horiz",
+               "f8(f8[:, :, :], f8[:, :, :], i4, i4, i4, i4)")
+    def sum_horiz(phi, h, j0, j1, i0, i1):
+        """
+        Compute sum(phi * h), excluding the halo
+        """
+        nz, ny, nx = phi.shape
+        sumh = 0.
+        for k in range(nz):
+            for j in range(j0, j1):
+                for i in range(i0, i1):
+                    sumh += phi[k, j, i]*h[k, j, i]
+        return sumh
+
+    @cc.export("sum2_horiz",
+               "f8(f8[:, :, :], f8[:, :, :], i4, i4, i4, i4)")
+    def sum2_horiz(phi, h, j0, j1, i0, i1):
+        """
+        Compute sum(phi**2 * h), excluding the halo
+        """
+        nz, ny, nx = phi.shape
+        sumh = 0.
+        for k in range(nz):
+            for j in range(j0, j1):
+                for i in range(i0, i1):
+                    sumh += phi[k, j, i]**2*h[k, j, i]
+        return sumh
 
     @cc.export("set_geostrophic_vel",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :], f8[:, :], f8[:, :], i1[:, :])")

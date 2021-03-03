@@ -2,31 +2,40 @@
 """
 
 import numpy as np
+import finitediff as fd
 
 
 class Bulk(object):
     def __init__(self, param, grid):
+        self.param = param
         self.grid = grid
         self.U_max = 0.
         self.H_max = param.H
         self.cellarea = grid.arrays.vol.view("i")
         self.f0 = param.f0
+        self.nprocs = np.prod(param.procs)
+        if self.nprocs > 1:
+            from mpi4py import MPI
+            self.MPI = MPI
 
     def compute(self, state, diags, fulldiag=False):
 
         h = state.h.view("i")
 
         if fulldiag:
+
+            k0, k1, j0, j1, i0, i1 = state.h.domainindices
+
             msk = self.grid.arrays.msk.view("i")
             areav = self.grid.arrays.volv.view("i")
             vor = state.vor.view("i")
             pv = state.pv.view("i")
             ke = state.ke.view("i")
             p = state.p.view("i")
-            KE = ke*h
-            PE = p*h
-            ENS = (vor+self.f0*areav)**2  # <- this ain't a 2 form ...
-            PV2 = pv**2*h  # <- multiplication with the 2-form h
+            KE = ke
+            PE = p
+            # ENS = (vor+self.f0*areav)**2  # <- this ain't a 2 form ...
+            PV2 = pv**2  # <- multiplication with the 2-form h
 
             # the above "enstrophy"
             # is not conserved by the continuous RSWE
@@ -41,20 +50,22 @@ class Bulk(object):
             # in short: q**2 is materially conserved
             # and sum(q**2 * h) is the bulk conserved quantity
 
-            K = P = Z = Q = V = 0.
-            for k in range(ke.shape[0]):
-                K += np.sum(KE[k]*msk)
-                P += np.sum(PE[k]*msk)
-                Z += np.sum(ENS[k])
-                Q += np.sum(PV2[k]*msk)
+            K = fd.sum_horiz(ke, h, j0, j1, i0, i1)
+            P = fd.sum_horiz(p, h, j0, j1, i0, i1)
+            Q = fd.sum2_horiz(pv, h, j0, j1, i0, i1)
+
+            if self.nprocs > 1:
+                MPI = self.MPI
+                K = MPI.COMM_WORLD.allreduce(K, op=MPI.SUM)
+                P = MPI.COMM_WORLD.allreduce(P, op=MPI.SUM)
+                Q = MPI.COMM_WORLD.allreduce(Q, op=MPI.SUM)
 
             P *= 0.5
-            Z *= 0.5
             Q *= 0.5
             diags["ke"] = K
             diags["pe"] = P
             diags["me"] = K+P
-            diags["enstrophy"] = Z
+            #diags["enstrophy"] = Z
             diags["potenstrophy"] = Q
 
         else:
