@@ -76,15 +76,15 @@ def compile(verbose=False):
                     h0 = h1
 
     @cc.export("comppv_c",
-               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :])")
-    def comppv_c(vor, f, h, pv):
+               "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :, :], i4, i4, i4, i4)")
+    def comppv_c(vor, f, h, pv, j0, j1, i0, i1):
         """ PV at cell centers
         """
-        shape = h.shape
-        for k in range(shape[0]):
-            for j in range(shape[1]):
+        nz, ny, nx = h.shape
+        for k in range(nz):
+            for j in range(j0, j1):
                 v0 = vor[k, j+1, 0]+vor[k, j, 0]+f[j, 0]+f[j+1, 0]
-                for i in range(shape[2]):
+                for i in range(i0, i1):
                     v1 = vor[k, j+1, i+1]+vor[k, j, i+1]+f[j, i+1]+f[j+1, i+1]
                     vm = (v1+v0)*.25
                     pv[k, j, i] = vm/h[k, j, i]

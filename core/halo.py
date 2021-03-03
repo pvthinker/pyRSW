@@ -47,19 +47,37 @@ class Halo():
         nz, ny, nx = shape = (param.nz, param.ny, param.nx)
         self.nz, self.ny, self.nx = nz, ny, nx
 
-        self.centers = self.define_buffers_and_requests((nz, ny, nx))
-        self.edges_u = self.define_buffers_and_requests((nz, ny, nx+1))
-        self.edges_v = self.define_buffers_and_requests((nz, ny+1, nx))
-        self.corners = self.define_buffers_and_requests((nz, ny+1, nx+1))
+        self.regular = {
+            "":  self.set_buf_req((nz, ny, nx)),
+            "x": self.set_buf_req((nz, ny, nx+1)),
+            "y": self.set_buf_req((nz, ny+1, nx)),
+            "xy": self.set_buf_req((nz, ny+1, nx+1))}
 
-    def define_buffers_and_requests(self, shape):
+        self.full = {
+            "":  self.set_buf_req((nz, ny, nx), full=True),
+            "x": self.set_buf_req((nz, ny, nx+1), full=True),
+            "y": self.set_buf_req((nz, ny+1, nx), full=True),
+            "xy": self.set_buf_req((nz, ny+1, nx+1), full=True)}
+
+    def set_buf_req(self, shape, full=False):
         comm = MPI.COMM_WORLD
         nh = self.nh
 
         # allocate buffers
         sbuf = {}
         rbuf = {}
-        directions = [(0, -1, 0), (0, +1, 0), (0, 0, -1), (0, 0, +1)]
+        if full:
+            directions = [(0, -1, -1), (0, -1, 0), (0, -1, +1),
+                          (0, 0, -1), (0, 0, +1),
+                          (0, +1, -1), (0, +1, 0), (0, +1, +1)]
+            procs = [1, self.param.npy, self.param.npx]
+            myrank = self.param.myrank
+            loc = topo.rank2loc(myrank, procs)
+            neighbours = topo.get_neighbours(loc, procs, extension=18)
+        else:
+            directions = [(0, -1, 0), (0, +1, 0), (0, 0, -1), (0, 0, +1)]
+            neighbours = self.param.neighbours
+
         for direc in directions:
             bufshape = [nh, nh, nh]
             for l in range(3):
@@ -71,7 +89,7 @@ class Halo():
         # define MPI requests
         reqs = []
         reqr = []
-        for direc, yourrank in self.neighbours.items():
+        for direc, yourrank in neighbours.items():
             flipdirec = tuple([-k for k in direc])
             stag = 0
             rtag = 0
@@ -87,7 +105,7 @@ class Halo():
 
         return (sbuf, rbuf, reqs, reqr)
 
-    def fill(self, field):
+    def fill(self, field, full=False):
         """
         field is a Field
         """
@@ -103,10 +121,10 @@ class Halo():
             assert (i0 == 0) or (i0 == nh)
             assert (i1 == nx) or (i1 == nx-nh)
 
-            infos = {"": self.centers,
-                     "x": self.edges_u,
-                     "y": self.edges_v,
-                     "xy": self.corners}[field.stagg]
+            if full:
+                infos = self.full[field.stagg]
+            else:
+                infos = self.regular[field.stagg]
 
             ii = jj = 0
             if "x" in field.stagg:
@@ -115,12 +133,13 @@ class Halo():
                 jj = 1
             sbuf, rbuf, reqs, reqr = infos
 
-            assert len(reqs) == len(field.neighbours)
-            assert len(reqr) == len(field.neighbours)
+            # assert len(reqs) == len(field.neighbours)
+            # assert len(reqr) == len(field.neighbours)
 
-            # if self.param.myrank == 0:
-            #     print(field.name, j0, j1, i0, i1)
-            self.fillarray(data, nh, j0, j1, i0, i1, infos, jj, ii)
+            if full:
+                self.fillarrayfull(data, nh, j0, j1, i0, i1, infos, jj, ii)
+            else:
+                self.fillarray(data, nh, j0, j1, i0, i1, infos, jj, ii)
 
     def fillarray(self, x, nh, j0, j1, i0, i1, infos, jj, ii):
         """
@@ -167,6 +186,65 @@ class Halo():
         north = rbuf[(0, +1, 0)]
         #print(x.shape, west.shape, east.shape, south.shape,north.shape)
         bh.buf_to_a3(x, west, east, south, north, j0, j1, i0, i1)
+        #print(west.shape, east.shape, south.shape,north.shape)
+
+        MPI.Prequest.Waitall(reqs)
+
+    def fillarrayfull(self, x, nh, j0, j1, i0, i1, infos, jj, ii):
+        """
+        this is where all the MPI instructions are
+
+        there are basically four steps:
+
+        - 1) copy inner values of x into buffers
+        - 2) send buffers
+        - 3) receive buffers
+        - 4) copy buffers into x halo
+
+        we use predefined requests and lauch them with
+        Prequest.Startall(). This must be used in
+        conjunction with Prequest.Waitall()
+        that ensures all requests have been completed
+
+        """
+        #print("call FULL"+"*"*40, flush=True)
+        sbuf, rbuf, reqs, reqr = infos
+
+        MPI.Prequest.Startall(reqr)
+
+        # 1) halo to buffer
+        sw = sbuf[(0, -1, -1)]
+        se = sbuf[(0, -1, +1)]
+        nw = sbuf[(0, +1, -1)]
+        ne = sbuf[(0, +1, +1)]
+        west = sbuf[(0, 0, -1)]
+        east = sbuf[(0, 0, +1)]
+        south = sbuf[(0, -1, 0)]
+        north = sbuf[(0, +1, 0)]
+        #print(x.shape, west.shape, east.shape, south.shape,north.shape)
+        # print(j0,j1,i0,i1)
+        bh.a3_to_buf_full(x, west, east, south, north, sw, se,
+                          nw, ne, j0, j1, i0, i1, jj, ii, nh)
+        #print(west.shape, east.shape, south.shape,north.shape)
+
+        # # 2)
+        MPI.Prequest.Startall(reqs)
+
+        # # 3)
+        MPI.Prequest.Waitall(reqr)
+
+        # 4) buffer to halo
+        sw = rbuf[(0, -1, -1)]
+        se = rbuf[(0, -1, +1)]
+        nw = rbuf[(0, +1, -1)]
+        ne = rbuf[(0, +1, +1)]
+        west = rbuf[(0, 0, -1)]
+        east = rbuf[(0, 0, +1)]
+        south = rbuf[(0, -1, 0)]
+        north = rbuf[(0, +1, 0)]
+        #print(x.shape, west.shape, east.shape, south.shape,north.shape)
+        bh.buf_to_a3_full(x, west, east, south, north,
+                          sw, se, nw, ne, j0, j1, i0, i1)
         #print(west.shape, east.shape, south.shape,north.shape)
 
         MPI.Prequest.Waitall(reqs)

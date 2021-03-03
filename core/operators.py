@@ -15,7 +15,8 @@ def comppv_c(state, grid):
     f = grid.arrays.f.view("i")
     h = state.h.view("i")
     pv = state.pv.view("i")
-    fd.comppv_c(vor, f, h, pv)
+    k0, k1, j0, j1, i0, i1 = state.h.domainindices
+    fd.comppv_c(vor, f, h, pv, j0, j1, i0, i1)
 
 
 def vorticity(state, grid, noslip):

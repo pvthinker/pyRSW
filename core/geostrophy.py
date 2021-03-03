@@ -25,7 +25,7 @@ def set_balance(model, nite=1):
 
     u(kt) = crossdel[p+ke(kt-1)] / (f+dzeta(kt-1))
     """
-    model.diagnose_var(model.state)
+    model.diagnose_var(model.state, full=True)
     for kt in range(nite):
         # model.diagnose_var(model.state)
 
@@ -41,7 +41,7 @@ def set_balance(model, nite=1):
 
         FD.set_geostrophic_vel(u, v, vor, p, ke, dx2, dy2, f, msk)
 
-        model.diagnose_var(model.state)
+        model.diagnose_var(model.state, full=True)
 
         u = model.state.ux.view("i")
         v = model.state.uy.view("j")

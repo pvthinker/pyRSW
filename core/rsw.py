@@ -205,10 +205,10 @@ class RSW(object):
         if self.param.forcing and last:
             self.forcing.add(state, dstate, t)
 
-    def diagnose_var(self, state):
-        self.applybc(state.h)
-        self.applybc(state.ux)
-        self.applybc(state.uy)
+    def diagnose_var(self, state, full=False):
+        self.applybc(state.h, full=full)
+        self.applybc(state.ux, full=full)
+        self.applybc(state.uy, full=full)
         self.grid.cov_to_contra(state)
 
         state.vor[:] = 0.
@@ -235,8 +235,8 @@ class RSW(object):
             vor[..., 0] = v[..., 0]
             vor[..., -1] = -v[..., -1]
 
-    def applybc(self, scalar):
-        self.grid.halo.fill(scalar)
+    def applybc(self, scalar, full=False):
+        self.grid.halo.fill(scalar, full=full)
         # return
         # ny, nx = self.outershape
         # if ("x" in self.param.geometry):
