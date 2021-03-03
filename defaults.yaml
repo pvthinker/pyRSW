@@ -144,6 +144,11 @@ output:
         doc: Transform model native units into physical units
         type: bool
 
+    halo_included:
+        default: False
+        doc: Whether to store the arrays with the halo or not
+        type: bool
+
     freq_diag:
         default: 0.05
         doc: Interval of time between two outputs in the diag file

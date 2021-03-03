@@ -33,6 +33,8 @@ class Ncio(object):
                 os.makedirs(self.output_directory)
         self.dtype = np.dtype(self.param.hisdtype)
 
+        self.halo_included = param.halo_included
+
     def backup_paramfile(self):
         self.paramfile = f"{self.output_directory}/param.pkl"
         with open(self.paramfile, "wb") as fid:
@@ -86,7 +88,10 @@ class Ncio(object):
                 nx = len(self.grid.xc)
                 ny = len(self.grid.yc)
             elif self.ndim == 2:
-                ny, nx = self.grid.xc.shape
+                if self.halo_included:
+                    ny, nx = self.grid.xc.shape
+                else:
+                    ny, nx = self.grid.ny, self.grid.nx
             else:
                 raise ValueError
 
@@ -170,19 +175,31 @@ class Ncio(object):
                 self.createvar(nickname+"y", dims,
                                var["name"]+" y-component", var["unit"])
 
-
-        with Dataset(self.hist_path, "r+") as nc:
-            nc.variables["xc"][:] = self.grid.xc
-            nc.variables["yc"][:] = self.grid.yc
-            nc.variables["xe"][:] = self.grid.xe
-            nc.variables["ye"][:] = self.grid.ye
+        if self.halo_included:
+            with Dataset(self.hist_path, "r+") as nc:
+                nc.variables["xc"][:] = self.grid.xc
+                nc.variables["yc"][:] = self.grid.yc
+                nc.variables["xe"][:] = self.grid.xe
+                nc.variables["ye"][:] = self.grid.ye
+        else:
+            with Dataset(self.hist_path, "r+") as nc:
+                j0, j1, i0, i1 = self.grid.arrays.hb.domainindices
+                nc.variables["xc"][:] = self.grid.xc[j0:j1, i0:i1]
+                nc.variables["yc"][:] = self.grid.yc[j0:j1, i0:i1]
+                j0, j1, i0, i1 = self.grid.arrays.f.domainindices
+                nc.variables["xe"][:] = self.grid.xe[j0:j1, i0:i1]
+                nc.variables["ye"][:] = self.grid.ye[j0:j1, i0:i1]
 
         # store grid arrays (f, hb, msk)
         with Dataset(self.hist_path, "r+") as nc:
             for nickname in self.gridvar:
                 var = self.grid.arrays.get(nickname)
                 data = var.getproperunits(self.grid)
-                nc.variables[nickname][:] = data
+                if self.halo_included:
+                    nc.variables[nickname][:] = data
+                else:
+                    j0, j1, i0, i1 = var.domainindices
+                    nc.variables[nickname][self.kt] = data[j0:j1, i0:i1]
 
     def createvar(self, nickname, dims, name, unit):
         # print(f"create variable {nickname}")
@@ -199,7 +216,11 @@ class Ncio(object):
             nc.variables['t'][self.kt] = time
             for nickname in self.hisvar:
                 data = state.get(nickname).getproperunits(self.grid)
-                nc.variables[nickname][self.kt] = data
+                if self.halo_included:
+                    nc.variables[nickname][self.kt] = data
+                else:
+                    k0, k1, j0, j1, i0, i1 = state.get(nickname).domainindices
+                    nc.variables[nickname][self.kt] = data[:, j0:j1, i0:i1]
         self.kt += 1
 
     def dodiags(self, diags, time, kt):
