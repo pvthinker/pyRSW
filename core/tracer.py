@@ -1,7 +1,7 @@
 import finitediff as fd
 
 
-def rhstrac(state, rhs, param, grid, last=False):
+def rhstrac(state, rhs, param, grid, dt, last=False):
     for tracname in state.tracers:
         trac = state.get(tracname)  # trac is a 'Field' instance
         dtrac = rhs.get(tracname)
@@ -22,5 +22,6 @@ def rhstrac(state, rhs, param, grid, last=False):
             else:
                 idx = (i0, i1, max(j0, 1), min(j1+1, ny))
 
-            fd.upwindtrac(field, velocity, dfield,
+            eps = 0.#5e-3/(param.npy*param.ny)**2
+            fd.upwindtrac(field, velocity, dfield, dt, eps,
                           order, param.MF_linear, *idx)

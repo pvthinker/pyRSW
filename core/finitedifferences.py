@@ -101,8 +101,12 @@ def compile(verbose=False):
                     for i in range(shape[2]):
                         if msk[j, i] >= m0:
                             vort[k, j, i] += v[k, j, i]
+                        # elif msk[j, i] == 3:
+                        #     vort[k, j, i] += v[k, j, i]*0.5
                         if msk[j, i+1] >= m0:
                             vort[k, j, i+1] -= v[k, j, i]
+                        # elif msk[j, i+1] == 3:
+                        #     vort[k, j, i+1] -= v[k, j, i]*0.5
 
         elif sign == -1:
             # -du/dj, u is in [k,i,j]
@@ -111,8 +115,12 @@ def compile(verbose=False):
                     for i in range(shape[2]):
                         if msk[j, i] >= m0:
                             vort[k, j, i] -= v[k, j, i]
+                        # elif msk[j, i] == 3:
+                        #     vort[k, j, i] -= v[k, j, i]*0.5
                         if msk[j, i+1] >= m0:
                             vort[k, j, i+1] += v[k, j, i]
+                        # elif msk[j, i+1] == 3:
+                        #     vort[k, j, i+1] += v[k, j, i]*0.5
 
     @cc.export("totalcurl",
                "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :])")
@@ -310,8 +318,8 @@ def compile(verbose=False):
                             dv[k, j, i] -= Um*(qi+ff)
 
     @cc.export("upwindtrac",
-               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], i1[:, :], boolean,i4, i4, i4, i4)")
-    def upwindtrac(field, U, dfield, order, linear, j0, j1, i0, i1):
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8, f8, i1[:, :], boolean,i4, i4, i4, i4)")
+    def upwindtrac(field, U, dfield, dt, eps, order, linear, j0, j1, i0, i1):
         nz, ny, nx = field.shape
 
         assert order.shape == (ny, nx+1)
@@ -351,7 +359,7 @@ def compile(verbose=False):
                         else:
                             qi = 0.
 
-                    f = U[k, j, i]*qi
+                    f = U[k, j, i]*qi                    
                     dfield[k, j, i] += f
                     dfield[k, j, i-1] -= f
         else:
@@ -387,6 +395,18 @@ def compile(verbose=False):
                                 qi = 0.
 
                         f = U[k, j, i]*qi
+                        fdt = f*dt
+                        hr = field[k,j,i]+fdt
+                        hl = field[k,j,i-1]-fdt
+                        if (hr<eps):
+                            f=-0.05*field[k,j,i]/dt
+                        elif (hl<eps):
+                            f=+0.05*field[k,j,i-1]/dt
+                            #f = .5*min(field[k,j,i], field[k,j,i-1])/dt
+                            # if U[k,j,i]<0:
+                            #     f=0.5*field[k,j,i]/dt
+                            # else:
+                            #     f=0.5*field[k,j,i-1]/dt
                         dfield[k, j, i] += f
                         dfield[k, j, i-1] -= f
 

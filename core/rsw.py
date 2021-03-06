@@ -196,7 +196,7 @@ class RSW(object):
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
         # transport the tracers
-        tracer.rhstrac(state, dstate, self.param, self.grid, last=last)
+        tracer.rhstrac(state, dstate, self.param, self.grid, self.dt, last=last)
         # vortex force
         operators.vortex_force(state, dstate, self.param, self.grid)
         # bernoulli

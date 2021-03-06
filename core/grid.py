@@ -192,13 +192,16 @@ class Grid(object):
         idy2 = self.arrays.invdy.view("i")
         idy2[:] = self.coord.idy2(self.je, self.ic)
 
-        # set Coriolis
+        self.set_coriolis()
+
+    def set_coriolis(self):
         f = self.arrays.f.view("i")
-        if param.coordinates == "spherical":
-            Omega = param.Omega
+        areav = self.arrays.volv.view("i")
+        if self.param.coordinates == "spherical":
+            Omega = self.param.Omega
             theta = self.coord.theta(self.je, self.ie)
             phi = self.coord.phi(self.je, self.ie)
-            theta_shift = param.lat_pole_shift
+            theta_shift = self.param.lat_pole_shift
             f[:] = 2*Omega*(np.sin(theta)*np.cos(theta_shift)
                             - np.cos(phi)*np.cos(theta)*np.sin(theta_shift))
             f[:] *= areav
@@ -253,6 +256,8 @@ class Grid(object):
                                  + (m[j+1, i] >= 0)*1
                                  + (m[j, i+1] >= 0)*1
                                  + (m[j+1, i+1] >= 0)*1)
+                # if partial[j,i] <4:
+                #     partial[j,i] = 0
                 if partial[j, i] > 0:
                     msk[j, i] = 1
                     if partial[j, i] < 4:
@@ -316,7 +321,7 @@ class Grid(object):
                 if areav[j, i] == 0:
                     areav[j, i] = areav_backup[j, i]
 
-        if True:
+        if False:
             """
             The lengths at edges might need to be changed
 
@@ -326,21 +331,23 @@ class Grid(object):
             for j in range(ny):
                 for i in range(1, nx-1):
                     s = partial[j, i-1]+partial[j, i]
-                    if s == 4:
+                    if s == 8:
                         pass
                     elif (partial[j, i-1] > 0) and (partial[j, i] > 0):
-                        dy2 = 1./self.coord.idy2(j+0.5, i)
-                        idx2[j, i] = dy2/(area[j, i-1]*area[j, i])
+                        #dy2 = 1./self.coord.idy2(j+0.5, i)
+                        #idx2[j, i] = dy2/(area[j, i-1]*area[j, i])
+                        idx2[j, i] = self.coord.idx2(j, i+0.5)
 
             # define lengths at V points
             for j in range(1, ny-1):
                 for i in range(nx):
                     s = partial[j-1, i]+partial[j, i]
-                    if s == 4:
+                    if s == 8:
                         pass
                     elif (partial[j-1, i] > 0) and (partial[j, i] > 0):
-                        dx2 = 1./self.coord.idx2(j, i+0.5)
-                        idy2[j, i] = dx2/(area[j-1, i]*area[j, i])
+                        #dx2 = 1./self.coord.idx2(j, i+0.5)
+                        #idy2[j, i] = dx2/(area[j-1, i]*area[j, i])
+                        idy2[j, i] = self.coord.idy2(j+0.5, i)
 
     def set_maskv(self):
         msk = self.arrays.msk.view("i")
@@ -390,6 +397,9 @@ class Grid(object):
         index_tracerflux(msk, typorder, self.param.MF_order)
         index_vortexforce(msk, vxporder, self.param.VF_order)
 
+        #self.set_coriolis()
+
+
     def msku(self):
         mskc = self.arrays.msk.view("i")
         ny, nx = mskc.shape
@@ -433,21 +443,21 @@ def index_tracerflux(msk, order, maxorder):
             elif (i == nx):
                 m1 = m[i-1]
             else:
-                m1 = 0
-            if (i >= 2) and (i < nx):
+                m1 = -1
+            if (i >= 2) and (i < nx) and (m1>0):
                 m3 = m[i-2]+m[i-1]+m[i]
             else:
-                m3 = 0
-            if (i >= 3) and (i < nx-1):
+                m3 = -1
+            if (i >= 3) and (i < nx-1) and (m3==3):
                 m5 = m[i-3]+m[i-2]+m[i-1]+m[i]+m[i+1]
             else:
-                m5 = 0
+                m5 = -1
 
             if (m5 == 5) and (maxorder >= 5):
                 order[j, i] = 5
             elif (m3 == 3) and (maxorder >= 3):
                 order[j, i] = 3
-            elif (m1 > 0) or (i == nx):
+            elif (m1 >= 1) or (i == nx):
                 order[j, i] = 1
             else:
                 order[j, i] = 0
@@ -484,24 +494,25 @@ def index_vortexforce(mskc, order, maxorder):
     for j in range(ny+1):
         m = mskv[j]
         for i in range(nx+1):
-            if (i >= 0) and (i < nx+1):
-                m1 = m[i]
+            if (i >= 0) and (i < nx):
+                m1 = m[i]+m[i+1]
             else:
-                m1 = 0
-            if (i >= 1) and (i < nx) and (m1 == 4):
+                m1 = -1
+            if (i >= 1) and (i < nx) and (m1 >=0 ):
                 m3 = m[i-1]+m[i]+m[i+1]
             else:
-                m3 = 0
-            if (i >= 2) and (i < nx-1) and (m3 == 12):
+                m3 = -1
+            if (i >= 2) and (i < nx-1) and (m3 >=0):
                 m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
             else:
-                m5 = 0
+                m5 = -1
 
-            if (m5 > 0) and (maxorder >= 5):
+            if (m5 >= 5) and (maxorder >= 5):
                 order[j, i] = 5
-            elif (m3 > 0) and (maxorder >= 3):
+            elif (m3 >=3) and (maxorder >= 3):
                 order[j, i] = 3
-            elif m1 > 0:
+            elif m1 >= 0:
                 order[j, i] = 1
             else:
                 order[j, i] = 0
+
