@@ -359,7 +359,7 @@ def compile(verbose=False):
                         else:
                             qi = 0.
 
-                    f = U[k, j, i]*qi                    
+                    f = U[k, j, i]*qi
                     dfield[k, j, i] += f
                     dfield[k, j, i-1] -= f
         else:
@@ -396,12 +396,12 @@ def compile(verbose=False):
 
                         f = U[k, j, i]*qi
                         fdt = f*dt
-                        hr = field[k,j,i]+fdt
-                        hl = field[k,j,i-1]-fdt
-                        if (hr<eps):
-                            f=-0.05*field[k,j,i]/dt
-                        elif (hl<eps):
-                            f=+0.05*field[k,j,i-1]/dt
+                        hr = field[k, j, i]+fdt
+                        hl = field[k, j, i-1]-fdt
+                        if (hr < eps):
+                            f = -0.05*field[k, j, i]/dt
+                        elif (hl < eps):
+                            f = +0.05*field[k, j, i-1]/dt
                             #f = .5*min(field[k,j,i], field[k,j,i-1])/dt
                             # if U[k,j,i]<0:
                             #     f=0.5*field[k,j,i]/dt

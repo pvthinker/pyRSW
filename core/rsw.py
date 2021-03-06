@@ -1,3 +1,7 @@
+from bulk import Bulk
+import timescheme as ts
+import tracer
+import operators
 from ncio import Ncio
 import plotting
 import numpy as np
@@ -26,10 +30,6 @@ except:
 
 
 # operators, tracer and timescheme need to be imported AFTER the compilation
-import operators
-import tracer
-import timescheme as ts
-from bulk import Bulk
 
 if not fullycompiled:
     print("compilation completed".center(80, "-"))
@@ -73,7 +73,7 @@ class RSW(object):
             assert len(self.param.rho) == self.param.nz
             self.param.rho = np.asarray(self.param.rho)
 
-    def run(self):
+    def run(self, timing=False):
         nprocs = np.prod(self.param.procs)
         if nprocs > 1:
             from mpi4py import MPI
@@ -114,6 +114,12 @@ class RSW(object):
         walltime = time.time()
         starttime = walltime
         blowup = False
+        if timing:
+            totaltime = 0.
+            vartime = 0.
+            stats = {"totaltime": totaltime,
+                     "vartime": vartime,
+                     "nite": 0}
 
         while self.ok:
             walltime0 = walltime
@@ -121,7 +127,10 @@ class RSW(object):
             if nprocs > 1:
                 MPI.COMM_WORLD.Barrier()
             self.dt = self.compute_dt()
+            t0 = time.time()
             blowup = self.forward()
+            t1 = time.time()
+
             if blowup:
                 self.ok = False
                 self.termination_status = "BLOW UP detected"
@@ -134,6 +143,13 @@ class RSW(object):
                     self.t += self.dt
                 else:
                     self.t = kite*self.dt
+
+            if timing:
+                totaltime += (t1-t0)
+                vartime += (t1-t0)**2
+                stats = {"totaltime": totaltime,
+                         "vartime": vartime,
+                         "nite": kite}
 
             if self.param.plot_interactive and (kite % self.param.freq_plot) == 0:
                 if self.param.plotvar == "pv":
@@ -187,16 +203,24 @@ class RSW(object):
                 print(f"blowup detected by rank={self.param.myrank}")
                 MPI.COMM_WORLD.Abort()
 
+        if timing:
+            nite = stats["nite"]
+            mt = stats["totaltime"]/nite
+            stats["meantime"] = mt
+            stats["stdtime"] = np.sqrt(stats["vartime"]/nite - mt**2)
+            return stats
+
     def forward(self):
         self.timescheme.forward(self.state, self.t, self.dt)
         h = self.state.h[:]
-        blowup = any(np.isnan(h.flat)) #or any(h.flat < 0)
+        blowup = any(np.isnan(h.flat))  # or any(h.flat < 0)
         return blowup
 
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
         # transport the tracers
-        tracer.rhstrac(state, dstate, self.param, self.grid, self.dt, last=last)
+        tracer.rhstrac(state, dstate, self.param,
+                       self.grid, self.dt, last=last)
         # vortex force
         operators.vortex_force(state, dstate, self.param, self.grid)
         # bernoulli
