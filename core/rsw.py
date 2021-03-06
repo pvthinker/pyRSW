@@ -1,7 +1,3 @@
-from bulk import Bulk
-import timescheme as ts
-import tracer
-import operators
 from ncio import Ncio
 import plotting
 import numpy as np
@@ -30,6 +26,10 @@ except:
 
 
 # operators, tracer and timescheme need to be imported AFTER the compilation
+from bulk import Bulk
+import timescheme as ts
+import tracer
+import operators
 
 if not fullycompiled:
     print("compilation completed".center(80, "-"))
