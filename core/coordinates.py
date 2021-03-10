@@ -31,16 +31,16 @@ class Cylindrical():
         self.param = param
         self.dtheta = (param.theta[1]-param.theta[0]) / (param.npx*param.nx)
         self.dr = (param.r[1]-param.r[0]) / (param.npy*param.ny)
-        self.i0 = param['loc'][1]*param.nx
-        self.j0 = param['loc'][0]*param.ny
+        self.i0 = param['loc'][-1]*param.nx
+        self.j0 = param['loc'][-2]*param.ny
 
     def theta(self, j, i):
         """ theta """
-        return index(j, i+self.i0, "i")*self.dtheta+self.param.theta[0]
+        return index(j+self.j0, i+self.i0, "i")*self.dtheta+self.param.theta[0]
 
     def r(self, j, i):
         """ r """
-        return index(j+self.j0, i, "j")*self.dr+self.param.r[0]
+        return index(j+self.j0, i+self.i0, "j")*self.dr+self.param.r[0]
 
     def x(self, j, i):
         return self.r(j, i)*np.cos(self.theta(j, i))
