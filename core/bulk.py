@@ -61,7 +61,7 @@ class Bulk(object):
                 Q = MPI.COMM_WORLD.allreduce(Q, op=MPI.SUM)
 
             P *= 0.5
-            Q *= 0.5
+            #Q *= 0.5
             diags["ke"] = K
             diags["pe"] = P
             diags["me"] = K+P
