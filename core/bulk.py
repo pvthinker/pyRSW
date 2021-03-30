@@ -13,7 +13,7 @@ class Bulk(object):
         self.H_max = param.H
         self.cellarea = grid.arrays.vol.view("i")
         self.f0 = param.f0
-        self.nprocs = np.prod(param.procs)
+        self.nprocs = np.prod(grid.procs)
         if self.nprocs > 1:
             from mpi4py import MPI
             self.MPI = MPI

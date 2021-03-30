@@ -139,7 +139,8 @@ class Vector(object):
         self.prognostic = var["prognostic"]
         self.dimensions = var["dimensions"]
         self.ndim = len(self.dimensions)
-        self.neighbours = param["neighbours"]
+        infos = topo.get_domain_decomposition(param)
+        self.neighbours = infos["neighbours"]
 
         # each component of Vector is a Field
         # a component is accessed via a dictionary
@@ -187,8 +188,8 @@ class Field(object):
         self.locked = False
 
         nh = param["nh"]
-        neighbours = param["neighbours"]
-        self.neighbours = neighbours
+        infos = topo.get_domain_decomposition(param)
+        self.neighbours = infos["neighbours"]
 
         shape, domainindices = topo.get_shape_and_domainindices(
             param, self.dimensions, stagg)

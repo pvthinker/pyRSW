@@ -406,7 +406,8 @@ def get_shape_and_domainindices(param, dimensions, stagg):
     shape: list, size of each dimension (in "kji" convention)
     domainindices: tuple, for each dimension, the pair of starting and ending indices
     """
-    neighbours = param.neighbours
+    infos = get_domain_decomposition(param)
+    neighbours = infos["neighbours"]
     nh = param.nh
 
     shape = []
@@ -436,3 +437,21 @@ def get_shape_and_domainindices(param, dimensions, stagg):
             shape += [nelem]
 
     return shape, domainindices
+
+def get_domain_decomposition(param):
+    procs = [1, param["npy"], param["npx"]]
+    nprocs = np.prod(procs)
+    if nprocs > 1:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        myrank = comm.Get_rank()
+        assert nprocs == comm.Get_size()
+    else:
+        myrank = 0
+    loc = rank2loc(myrank, procs)
+    neighbours = get_neighbours(loc, procs)
+    infos = {"procs": procs,
+             "myrank": myrank,
+             "neighbours": neighbours,
+             "loc": loc}
+    return infos

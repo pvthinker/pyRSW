@@ -60,7 +60,7 @@ class RSW(object):
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
-        if param.myrank == 0:
+        if grid.myrank == 0:
             self.print_recap()
 
     def fix_density(self):
@@ -74,14 +74,14 @@ class RSW(object):
             self.param.rho = np.asarray(self.param.rho)
 
     def run(self, timing=False):
-        nprocs = np.prod(self.param.procs)
+        nprocs = np.prod(self.grid.procs)
         if nprocs > 1:
             from mpi4py import MPI
             MPI.COMM_WORLD.Barrier()
 
         self.io = Ncio(self.param, self.grid, self.state)
 
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             print(f"Creating output file: {self.io.hist_path}")
             print(f"Backing up script to: {self.io.script_path}")
             self.io.backup_scriptfile(sys.argv[0])
@@ -177,7 +177,7 @@ class RSW(object):
             tu = self.param.timeunit
 
             time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
-            if self.param.myrank == 0:
+            if self.grid.myrank == 0:
                 print(time_string, end="", flush=True)
 
         if self.param.plot_interactive:
@@ -187,7 +187,7 @@ class RSW(object):
             # save the state for debug
             self.io.dohis(self.state, self.t)
 
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             print()
             print(self.termination_status, flush=True)
 
@@ -196,11 +196,11 @@ class RSW(object):
                 print(f"Wall time: {wt:.3} s -- {wt/kite:.2e} s/iteration")
             print(f"Output written to: {self.io.hist_path}")
 
-        if np.prod(self.param.procs) > 1:
+        if np.prod(self.grid.procs) > 1:
             MPI.COMM_WORLD.Barrier()
             if blowup:
                 print()
-                print(f"blowup detected by rank={self.param.myrank}")
+                print(f"blowup detected by rank={self.grid.myrank}")
                 MPI.COMM_WORLD.Abort()
 
         if timing:
@@ -314,7 +314,7 @@ class RSW(object):
             return self.param.dt
 
     def signal_handler(self, signal, frame):
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             print('\n hit ctrl-C, stopping', end='')
         self.ok = False
         self.termination_status = "Job manually interrupted"
@@ -335,7 +335,7 @@ class RSW(object):
         else:
             numerics = "numerics: you're not using the best combination"
 
-        ncores = np.prod(param.procs)
+        ncores = np.prod(self.grid.procs)
         if ncores > 1:
             parallel = f"parallel computation with {ncores} cores: {param.npy} x {param.npx}"
         else:
@@ -358,7 +358,7 @@ class RSW(object):
             " | |     __/ |                           ",
             " |_|    |___/                            ",
             "                                         "]
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             print("Welcome to")
             for l in logo:
                 print(" "*10+l)

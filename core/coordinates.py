@@ -1,13 +1,15 @@
 import numpy as np
+import topology as topo
 
 
 class Cartesian():
     def __init__(self, param):
         self.param = param
+        infos = topo.get_domain_decomposition(param)
         self.dx = param.Lx / (param.npx*param.nx)
         self.dy = param.Ly / (param.npy*param.ny)
-        self.i0 = param['loc'][-1]*param.nx
-        self.j0 = param['loc'][-2]*param.ny
+        self.i0 = infos['loc'][-1]*param.nx
+        self.j0 = infos['loc'][-2]*param.ny
         #print(param.myrank, self.j0, self.i0)
 
     def x(self, j, i):
@@ -29,10 +31,12 @@ class Cartesian():
 class Cylindrical():
     def __init__(self, param):
         self.param = param
+        infos = topo.get_domain_decomposition(param)
+
         self.dtheta = (param.theta[1]-param.theta[0]) / (param.npx*param.nx)
         self.dr = (param.r[1]-param.r[0]) / (param.npy*param.ny)
-        self.i0 = param['loc'][-1]*param.nx
-        self.j0 = param['loc'][-2]*param.ny
+        self.i0 = infos['loc'][-1]*param.nx
+        self.j0 = infos['loc'][-2]*param.ny
 
     def theta(self, j, i):
         """ theta """
@@ -68,11 +72,12 @@ class Spherical():
 
     def __init__(self, param):
         self.param = param
+        infos = topo.get_domain_decomposition(param)
         self.dtheta = (param.theta[1]-param.theta[0]) / (param.npy*param.ny)
         self.dphi = (param.phi[1]-param.phi[0]) / (param.npx*param.nx)
         self.a = param.sphere_radius
-        self.i0 = param['loc'][1]*param.nx
-        self.j0 = param['loc'][0]*param.ny
+        self.i0 = infos['loc'][1]*param.nx
+        self.j0 = infos['loc'][0]*param.ny
 
     def theta(self, j, i):
         """ theta """

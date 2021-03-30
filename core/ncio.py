@@ -13,7 +13,7 @@ class Ncio(object):
         self.halo_included = param.halo_included
         self.singlefile = param.singlefile
 
-        self.nprocs = np.prod(param.procs)
+        self.nprocs = np.prod(grid.procs)
         if self.nprocs > 1:
             from mpi4py import MPI
             self.MPI = MPI
@@ -32,14 +32,14 @@ class Ncio(object):
         if self.singlefile:
             hisname = f"history.nc"
         else:
-            hisname = f"history_{param.myrank:02}.nc"
+            hisname = f"history_{grid.myrank:02}.nc"
         diagname = f"diags.nc"
         self.hist_path = os.path.join(out_dir, hisname)
         self.diag_path = os.path.join(out_dir, diagname)
         self.script_path = os.path.join(out_dir, f"{expname}.py")
         self.output_directory = out_dir
         # Create the output directory if necessary
-        if param.myrank == 0:
+        if grid.myrank == 0:
             if not os.path.isdir(self.output_directory):
                 os.makedirs(self.output_directory)
         self.dtype = np.dtype(self.param.hisdtype)
@@ -50,11 +50,11 @@ class Ncio(object):
             pickle.dump(self.param, fid)
 
     def backup_scriptfile(self, filename):
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             shutil.copyfile(filename, self.script_path)
 
     def create_diagnostic_file(self, diags):
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             with Dataset(self.diag_path, "w", format='NETCDF4') as nc:
                 nc.createDimension("t", None)
                 d = nc.createVariable("t", "f", ("t",))
@@ -71,7 +71,7 @@ class Ncio(object):
         # for nickname in state.variables:
         #     if state.variables[nickname]["constant"]:
         #         self.gridvar += [nickname]
-        if not self.singlefile or (self.param.myrank == 0):
+        if not self.singlefile or (self.grid.myrank == 0):
             with Dataset(self.hist_path, "w", format='NETCDF4') as nc:
                 # Store the experiment parameters
                 attrs = {key: self.param[key] for key in self.param.toc}
@@ -192,8 +192,8 @@ class Ncio(object):
         #     print("ok", self.param.loc, flush=True)
 
         if self.singlefile:
-            I0 = self.param.loc[2]*self.param.nx
-            J0 = self.param.loc[1]*self.param.ny
+            I0 = self.grid.loc[2]*self.param.nx
+            J0 = self.grid.loc[1]*self.param.ny
         else:
             I0 = 0
             J0 = 0
@@ -204,7 +204,7 @@ class Ncio(object):
         self.indices = (I0, J0, nxc, nyc, nxe, nye)
 
         for rank in range(self.nprocs):
-            if rank == self.param.myrank:
+            if rank == self.grid.myrank:
                 if self.halo_included:
                     with Dataset(self.hist_path, "r+") as nc:
                         nc.variables["xc"][:] = self.grid.xc
@@ -248,7 +248,7 @@ class Ncio(object):
 
     def createvar(self, nickname, dims, name, unit):
         # print(f"create variable {nickname}")
-        if not self.singlefile or (self.param.myrank == 0):
+        if not self.singlefile or (self.grid.myrank == 0):
             with Dataset(self.hist_path, "r+", format='NETCDF4') as nc:
                 v = nc.createVariable(nickname, self.dtype, tuple(dims))
                 v.standard_name = name
@@ -258,7 +258,7 @@ class Ncio(object):
 
     def dohis(self, state, time):
         I0, J0, nxc, nyc, nxe, nye = self.indices
-        if not self.singlefile or (self.param.myrank == 0):
+        if not self.singlefile or (self.grid.myrank == 0):
             with Dataset(self.hist_path, "r+") as nc:
                 nc.variables['n'][self.kt] = self.kt
                 nc.variables['t'][self.kt] = time
@@ -266,7 +266,7 @@ class Ncio(object):
         for rank in range(self.nprocs):
             # if self.nprocs>1:
             #     self.MPI.COMM_WORLD.Barrier()
-            if rank == self.param.myrank:
+            if rank == self.grid.myrank:
                 with Dataset(self.hist_path, "r+") as nc:
                     for nickname in self.hisvar:
                         var = state.get(nickname)
@@ -294,7 +294,7 @@ class Ncio(object):
         self.kt += 1
 
     def dodiags(self, diags, time, kt):
-        if self.param.myrank == 0:
+        if self.grid.myrank == 0:
             with Dataset(self.diag_path, "r+") as nc:
                 nc.variables["t"][self.ktdiag] = time
                 nc.variables["kt"][self.ktdiag] = kt

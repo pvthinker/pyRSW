@@ -102,29 +102,16 @@ gridvar[nickname] = {
     "prognostic": False}
 
 
-def set_domain_decomposition(param):
-    topo.topology = param["geometry"]
-    procs = [1, param["npy"], param["npx"]]
-    nprocs = np.prod(procs)
-    if nprocs > 1:
-        from mpi4py import MPI
-        comm = MPI.COMM_WORLD
-        myrank = comm.Get_rank()
-        assert nprocs == comm.Get_size()
-    else:
-        myrank = 0
-    loc = topo.rank2loc(myrank, procs)
-    neighbours = topo.get_neighbours(loc, procs)
-    param["procs"] = procs
-    param["myrank"] = myrank
-    param["neighbours"] = neighbours
-    param["loc"] = loc
-    #print(myrank, "param.loc=", loc)
-
-
 class Grid(object):
     def __init__(self, param):
-        set_domain_decomposition(param)
+        # this set the module "topology" global variable
+        # seen outside of this module
+        topo.topology = param["geometry"]
+
+        infos = topo.get_domain_decomposition(param)
+        for key, val in infos.items():
+            setattr(self, key, val)
+
         self.param = param
 
         self.halo = halo.Halo(param)

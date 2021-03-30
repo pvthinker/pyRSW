@@ -39,10 +39,11 @@ class Halo():
 
         """
         self.param = param
-        neighbours = param['neighbours']
+        infos = topo.get_domain_decomposition(param)
+        neighbours = infos['neighbours']
         nh = param['nh']
         self.neighbours = neighbours
-        self.myrank = param["myrank"]
+        self.myrank = infos["myrank"]
         self.nh = nh
         nz, ny, nx = shape = (param.nz, param.ny, param.nx)
         self.nz, self.ny, self.nx = nz, ny, nx
@@ -71,12 +72,12 @@ class Halo():
                           (0, 0, -1), (0, 0, +1),
                           (0, +1, -1), (0, +1, 0), (0, +1, +1)]
             procs = [1, self.param.npy, self.param.npx]
-            myrank = self.param.myrank
+            myrank = self.myrank
             loc = topo.rank2loc(myrank, procs)
             neighbours = topo.get_neighbours(loc, procs, extension=18)
         else:
             directions = [(0, -1, 0), (0, +1, 0), (0, 0, -1), (0, 0, +1)]
-            neighbours = self.param.neighbours
+            neighbours = self.neighbours
 
         for direc in directions:
             bufshape = [nh, nh, nh]
