@@ -391,7 +391,7 @@ def get_mypartners(procs, incr, incr_next, myrank):
     return mat
 
 
-def get_shape_and_domainindices(param, dimensions, stagg):
+def get_shape_and_domainindices(param, dimensions, stagg, **kwargs):
     """
     return the shape and the interior domain indices of an array
 
@@ -406,7 +406,7 @@ def get_shape_and_domainindices(param, dimensions, stagg):
     shape: list, size of each dimension (in "kji" convention)
     domainindices: tuple, for each dimension, the pair of starting and ending indices
     """
-    infos = get_domain_decomposition(param)
+    infos = get_domain_decomposition(param, **kwargs)
     neighbours = infos["neighbours"]
     nh = param.nh
 
@@ -438,14 +438,23 @@ def get_shape_and_domainindices(param, dimensions, stagg):
 
     return shape, domainindices
 
-def get_domain_decomposition(param):
+
+def get_domain_decomposition(param, myrank=None):
     procs = [1, param["npy"], param["npx"]]
     nprocs = np.prod(procs)
-    if nprocs > 1:
-        from mpi4py import MPI
-        comm = MPI.COMM_WORLD
-        myrank = comm.Get_rank()
-        assert nprocs == comm.Get_size()
+    if (nprocs > 1):
+        if myrank is None:
+            from mpi4py import MPI
+            comm = MPI.COMM_WORLD
+            myrank = comm.Get_rank()
+            assert nprocs == comm.Get_size()
+        else:
+            # to debug and test the function
+            # it is useful to have it working
+            # without calling mpirun
+            # this case is for that purpose
+            assert isinstance(myrank, int)
+            assert myrank < nprocs
     else:
         myrank = 0
     loc = rank2loc(myrank, procs)
