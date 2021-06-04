@@ -62,10 +62,9 @@ class RSW(object):
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
         self.kite = 0
-        if grid.myrank == 0:
-            self.print_recap()
         if self.param.restart:
             batchindex = restart.get_batchindex(self)
+
             if batchindex == 0:
                 self.firstbatch = True
                 param.tend = param.duration
@@ -74,9 +73,13 @@ class RSW(object):
                 restart.update_state(self, batchindex-1)
         else:
             batchindex = 0
+        self.batchindex = batchindex
         self.io = Ncio(self.param, self.grid,
                        self.state, batchindex=batchindex)
         self.t0 = self.t
+        self.kite0 = self.kite
+        if grid.myrank == 0:
+            self.print_recap()
 
     def fix_density(self):
         """ Transform param.rho into a numpy array
@@ -208,8 +211,9 @@ class RSW(object):
 
             wt = walltime-starttime
             if self.kite > 0:
+                nite = self.kite - self.kite0
                 print(
-                    f"Wall time: {wt:.3} s -- {wt/self.kite:.2e} s/iteration")
+                    f"Wall time: {wt:.3} s -- {wt/nite:.2e} s/iteration")
             print(f"Output written to: {self.io.hist_path}")
 
         if np.prod(self.grid.procs) > 1:
@@ -363,6 +367,9 @@ class RSW(object):
             f"  grid size : {nblayers} layer{s} {npy*ny} x {npx*nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
         print(f"  {parallel}")
+        if self.param.restart:
+            restart = f"restart from restart_{self.batchindex-1:02}"
+            print(f"  {restart}")
         print("")
 
     def banner(self):
