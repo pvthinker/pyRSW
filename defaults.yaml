@@ -149,6 +149,11 @@ output:
         doc: Whether to store the arrays with the halo or not
         type: bool
 
+    restart:
+        default: False
+        doc: Whether to use restarts, if activated, the first batch will use the user initial conditions and write a restart at thend, then when relaunched, the model will start from this last restart.
+        type: bool
+
     singlefile:
         default: True
         doc: Whether to write a single history file or one per core
@@ -301,6 +306,11 @@ time:
         type: float
 
     tend:
+        default: 1.
+        doc: Integration time
+        type: float
+
+    duration:
         default: 1.
         doc: Integration time
         type: float

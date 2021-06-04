@@ -1,3 +1,7 @@
+import operators
+import tracer
+import timescheme as ts
+from bulk import Bulk
 from ncio import Ncio
 import plotting
 import numpy as np
@@ -7,6 +11,7 @@ import variables
 import parameters
 import time
 import os
+import restart
 
 fullycompiled = True
 # if these modules aren't yet compiled, do it
@@ -26,10 +31,6 @@ except:
 
 
 # operators, tracer and timescheme need to be imported AFTER the compilation
-from bulk import Bulk
-import timescheme as ts
-import tracer
-import operators
 
 if not fullycompiled:
     print("compilation completed".center(80, "-"))
@@ -60,8 +61,22 @@ class RSW(object):
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
+        self.kite = 0
         if grid.myrank == 0:
             self.print_recap()
+        if self.param.restart:
+            batchindex = restart.get_batchindex(self)
+            if batchindex == 0:
+                self.firstbatch = True
+                param.tend = param.duration
+            else:
+                self.firstbatch = False
+                restart.update_state(self, batchindex-1)
+        else:
+            batchindex = 0
+        self.io = Ncio(self.param, self.grid,
+                       self.state, batchindex=batchindex)
+        self.t0 = self.t
 
     def fix_density(self):
         """ Transform param.rho into a numpy array
@@ -79,15 +94,12 @@ class RSW(object):
             from mpi4py import MPI
             MPI.COMM_WORLD.Barrier()
 
-        self.io = Ncio(self.param, self.grid, self.state)
-
         if self.grid.myrank == 0:
             print(f"Creating output file: {self.io.hist_path}")
             print(f"Backing up script to: {self.io.script_path}")
             self.io.backup_scriptfile(sys.argv[0])
             self.io.backup_paramfile()
 
-        kite = 0
         self.diagnose_var(self.state)
         self.diagnose_supplementary(self.state)
 
@@ -97,11 +109,11 @@ class RSW(object):
 
         self.io.create_history_file(self.state)
         self.io.dohis(self.state, self.t)
-        nexthistime = self.io.kt * self.param.freq_his
+        nexthistime = self.t0 + self.io.kt * self.param.freq_his
 
         self.io.create_diagnostic_file(self.diags)
-        self.io.dodiags(self.diags, self.t, kite)
-        nextdiagtime = self.io.ktdiag * self.param.freq_diag
+        self.io.dodiags(self.diags, self.t, self.kite)
+        nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
 
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.grid, self.state, self.t)
@@ -138,20 +150,20 @@ class RSW(object):
             if self.t >= tend:
                 self.ok = False
             else:
-                kite += 1
+                self.kite += 1
                 if self.param.auto_dt:
                     self.t += self.dt
                 else:
-                    self.t = kite*self.dt
+                    self.t = self.kite*self.dt
 
             if timing:
                 totaltime += (t1-t0)
                 vartime += (t1-t0)**2
                 stats = {"totaltime": totaltime,
                          "vartime": vartime,
-                         "nite": kite}
+                         "nite": self.kite}
 
-            if self.param.plot_interactive and (kite % self.param.freq_plot) == 0:
+            if self.param.plot_interactive and (self.kite % self.param.freq_plot) == 0:
                 if self.param.plotvar == "pv":
                     self.diagnose_supplementary(self.state)
 
@@ -165,18 +177,18 @@ class RSW(object):
 
             if timetohis:
                 self.io.dohis(self.state, self.t)
-                nexthistime = self.io.kt * self.param.freq_his
+                nexthistime = self.t0 + self.io.kt * self.param.freq_his
 
             if timetodiag:
                 self.bulk.compute(self.state, self.diags, fulldiag=True)
-                self.io.dodiags(self.diags, self.t, kite)
-                nextdiagtime = self.io.ktdiag * self.param.freq_diag
+                self.io.dodiags(self.diags, self.t, self.kite)
+                nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
 
             walltime = time.time()
             perf = (walltime-walltime0)/ngridpoints
             tu = self.param.timeunit
 
-            time_string = f"\r n={kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
+            time_string = f"\r n={self.kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
             if self.grid.myrank == 0:
                 print(time_string, end="", flush=True)
 
@@ -187,13 +199,17 @@ class RSW(object):
             # save the state for debug
             self.io.dohis(self.state, self.t)
 
+        if self.param.restart:
+            restart.saverestart(self)
+
         if self.grid.myrank == 0:
             print()
             print(self.termination_status, flush=True)
 
             wt = walltime-starttime
-            if kite > 0:
-                print(f"Wall time: {wt:.3} s -- {wt/kite:.2e} s/iteration")
+            if self.kite > 0:
+                print(
+                    f"Wall time: {wt:.3} s -- {wt/self.kite:.2e} s/iteration")
             print(f"Output written to: {self.io.hist_path}")
 
         if np.prod(self.grid.procs) > 1:
@@ -227,6 +243,8 @@ class RSW(object):
         operators.bernoulli(state, dstate, self.param, self.grid)
         #
         if self.param.forcing and last:
+            assert hasattr(
+                self, "forcing"), "you forgot to attach forcing in the user script"
             self.forcing.add(state, dstate, t)
 
     def diagnose_var(self, state, full=False):

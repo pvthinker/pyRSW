@@ -5,8 +5,15 @@ import numpy as np
 from netCDF4 import Dataset
 
 
+def get_expdir(param):
+    datadir = os.path.expanduser(param.datadir)
+    expname = param.expname
+    out_dir = os.path.join(datadir, expname)
+    return out_dir
+
+
 class Ncio(object):
-    def __init__(self, param, grid, state):
+    def __init__(self, param, grid, state, batchindex=0):
         self.param = param
         self.grid = grid
 
@@ -22,18 +29,25 @@ class Ncio(object):
         self.kt = 0
         self.ktdiag = 0
         # Create paths for the in- and output
-        datadir = os.path.expanduser(param.datadir)
+        # datadir = os.path.expanduser(param.datadir)
         expname = param.expname
-        out_dir = os.path.join(datadir, expname)
+        # out_dir = os.path.join(datadir, expname)
+        out_dir = get_expdir(param)
         if param.filemode == "overwrite":
             pass
         else:
             raise ValueError(f"{param.filemode} is not yet implemented")
-        if self.singlefile:
-            hisname = f"history.nc"
+        if param.restart:
+            his = f"history_{batchindex:02}"
+            dia = f"diags_{batchindex:02}"
         else:
-            hisname = f"history_{grid.myrank:02}.nc"
-        diagname = f"diags.nc"
+            his = "history"
+            dia = "diags"
+        if self.singlefile:
+            hisname = f"{his}.nc"
+        else:
+            hisname = f"{his}_{grid.myrank:02}.nc"
+        diagname = f"{dia}.nc"
         self.hist_path = os.path.join(out_dir, hisname)
         self.diag_path = os.path.join(out_dir, diagname)
         self.script_path = os.path.join(out_dir, f"{expname}.py")
