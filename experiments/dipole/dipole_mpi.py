@@ -82,7 +82,7 @@ def vortex(xx, yy, **kwargs):
         m[d0 > d] = -1
 
     else:
-        m = np.exp(-d2/(2*d**2))-0.7
+        m = np.exp(-d2/(2*d**2))
     return m
 
 
