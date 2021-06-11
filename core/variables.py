@@ -1,5 +1,6 @@
 import numpy as np
 import topology as topo
+from timing import timeit
 
 modelvar = {
     "h": {
@@ -223,6 +224,7 @@ class Field(object):
     def __setitem__(self, elem, val):
         self.view()[elem] = val
 
+    @timeit
     def setview(self, idx):
         if self.activeview != idx and not self.locked:
             # copy the current array into the desired one

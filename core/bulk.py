@@ -3,7 +3,7 @@
 
 import numpy as np
 import finitediff as fd
-
+from timing import timeit
 
 class Bulk(object):
     def __init__(self, param, grid):
@@ -18,7 +18,8 @@ class Bulk(object):
             from mpi4py import MPI
             self.MPI = MPI
 
-    def compute(self, state, diags, fulldiag=False):
+    @timeit
+    def computebulk(self, state, diags, fulldiag=False):
 
         h = state.h.view("i")
 

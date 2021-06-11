@@ -29,6 +29,7 @@ timeschemes, we need to store more than just one dstate
 
 """
 import optimize as opt
+from timing import timeit
 
 class Timescheme(object):
     """Catalogue and handler of timeschemes.
@@ -177,7 +178,7 @@ class Timescheme(object):
 
             self.diagnose_var(state)
     # ----------------------------------------
-
+    @timeit
     def RK3_SSP(self, state, t, dt, **kwargs):
         """ RK3 SSP
 

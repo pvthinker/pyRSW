@@ -1,7 +1,8 @@
 import finitediff as fd
+from timing import timeit
 
-
-def rhstrac(state, rhs, param, grid, dt, last=False):
+@timeit
+def tracerflux(state, rhs, param, grid, dt, last=False):
     for tracname in state.tracers:
         trac = state.get(tracname)  # trac is a 'Field' instance
         dtrac = rhs.get(tracname)

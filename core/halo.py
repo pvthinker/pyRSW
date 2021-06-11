@@ -9,6 +9,7 @@ import numpy as np
 from mpi4py import MPI
 import topology as topo
 import buffers_halo as bh
+from timing import timeit
 
 
 class Halo():
@@ -106,6 +107,7 @@ class Halo():
 
         return (sbuf, rbuf, reqs, reqr)
 
+    @timeit
     def fill(self, field, full=False):
         """
         field is a Field

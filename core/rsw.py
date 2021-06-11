@@ -12,6 +12,8 @@ import parameters
 import time
 import os
 import restart
+import timing
+from timing import timeit
 
 fullycompiled = True
 # if these modules aren't yet compiled, do it
@@ -91,7 +93,7 @@ class RSW(object):
             assert len(self.param.rho) == self.param.nz
             self.param.rho = np.asarray(self.param.rho)
 
-    def run(self, timing=False):
+    def run(self):
         nprocs = np.prod(self.grid.procs)
         if nprocs > 1:
             from mpi4py import MPI
@@ -106,7 +108,7 @@ class RSW(object):
         self.diagnose_var(self.state)
         self.diagnose_supplementary(self.state)
 
-        self.bulk.compute(self.state, self.diags, fulldiag=True)
+        self.bulk.computebulk(self.state, self.diags, fulldiag=True)
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
@@ -129,12 +131,6 @@ class RSW(object):
         walltime = time.time()
         starttime = walltime
         blowup = False
-        if timing:
-            totaltime = 0.
-            vartime = 0.
-            stats = {"totaltime": totaltime,
-                     "vartime": vartime,
-                     "nite": 0}
 
         while self.ok:
             walltime0 = walltime
@@ -159,13 +155,6 @@ class RSW(object):
                 else:
                     self.t = self.kite*self.dt
 
-            if timing:
-                totaltime += (t1-t0)
-                vartime += (t1-t0)**2
-                stats = {"totaltime": totaltime,
-                         "vartime": vartime,
-                         "nite": self.kite}
-
             if self.param.plot_interactive and (self.kite % self.param.freq_plot) == 0:
                 if self.param.plotvar == "pv":
                     self.diagnose_supplementary(self.state)
@@ -183,7 +172,7 @@ class RSW(object):
                 nexthistime = self.t0 + self.io.kt * self.param.freq_his
 
             if timetodiag:
-                self.bulk.compute(self.state, self.diags, fulldiag=True)
+                self.bulk.computebulk(self.state, self.diags, fulldiag=True)
                 self.io.dodiags(self.diags, self.t, self.kite)
                 nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
 
@@ -223,12 +212,10 @@ class RSW(object):
                 print(f"blowup detected by rank={self.grid.myrank}")
                 MPI.COMM_WORLD.Abort()
 
-        if timing:
-            nite = stats["nite"]
-            mt = stats["totaltime"]/nite
-            stats["meantime"] = mt
-            stats["stdtime"] = np.sqrt(stats["vartime"]/nite - mt**2)
-            return stats
+        if self.grid.myrank == 0:
+            direxp = self.io.output_directory
+            timing.write_timings(direxp)
+            timing.analyze_timing(direxp)
 
     def forward(self):
         self.timescheme.forward(self.state, self.t, self.dt)
@@ -236,10 +223,11 @@ class RSW(object):
         blowup = any(np.isnan(h.flat))  # or any(h.flat < 0)
         return blowup
 
+    @timeit
     def rhs(self, state, t, dstate, last=False):
         dstate.set_to_zero()
         # transport the tracers
-        tracer.rhstrac(state, dstate, self.param,
+        tracer.tracerflux(state, dstate, self.param,
                        self.grid, self.dt, last=last)
         # vortex force
         operators.vortex_force(state, dstate, self.param, self.grid)
@@ -251,6 +239,7 @@ class RSW(object):
                 self, "forcing"), "you forgot to attach forcing in the user script"
             self.forcing.add(state, dstate, t)
 
+    @timeit
     def diagnose_var(self, state, full=False):
         self.applybc(state.h, full=full)
         self.applybc(state.ux, full=full)
@@ -320,7 +309,7 @@ class RSW(object):
 
         if self.param.auto_dt:
 
-            self.bulk.compute(self.state, self.diags)
+            self.bulk.computebulk(self.state, self.diags)
 
             c_max = np.sqrt(self.param.g*self.bulk.H_max)
             U_max = self.bulk.U_max
@@ -367,7 +356,7 @@ class RSW(object):
             f"  grid size : {nblayers} layer{s} {npy*ny} x {npx*nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
         print(f"  {parallel}")
-        if self.param.restart:
+        if (self.param.restart) and (self.batchindex>0):
             restart = f"restart from restart_{self.batchindex-1:02}"
             print(f"  {restart}")
         print("")

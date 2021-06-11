@@ -1,6 +1,6 @@
 import finitediff as fd
 import numpy as np
-
+from timing import timeit
 
 def comppv(state, grid):
     vor = state.vor.view("i")
@@ -18,7 +18,7 @@ def comppv_c(state, grid):
     k0, k1, j0, j1, i0, i1 = state.h.domainindices
     fd.comppv_c(vor, f, h, pv, j0, j1, i0, i1)
 
-
+@timeit
 def vorticity(state, grid, noslip):
     if True:
         if noslip:
@@ -44,6 +44,7 @@ def vorticity(state, grid, noslip):
         fd.totalcurl(u, v, vor, mskv)
 
 
+@timeit
 def kinenergy(state, param):
     u = state.u["i"].view("i")
     U = state.U["i"].view("i")
@@ -60,6 +61,7 @@ def kinenergy(state, param):
     fd.compke(v, V, ke, 1)
 
 
+@timeit
 def montgomery(state, grid, param):
     rho = param["rho"]
     g = param["g"]
@@ -82,6 +84,7 @@ def montgomery(state, grid, param):
 #     p[:] = g*(h+hb)
 
 
+@timeit
 def vortex_force(state, dstate, param, grid):
     du = dstate.u["i"].view("j")
     V = state.U["j"].view("j")
@@ -104,6 +107,7 @@ def vortex_force(state, dstate, param, grid):
     fd.vortex_force(U, f, vor, dv, q, order, -1, param.VF_linear)
 
 
+@timeit
 def bernoulli(state, dstate, param, grid):
     du = dstate.u["i"].view("i")
     p = state.p.view("i")

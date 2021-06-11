@@ -3,7 +3,7 @@ import shutil
 import pickle
 import numpy as np
 from netCDF4 import Dataset
-
+from timing import timeit
 
 def get_expdir(param):
     datadir = os.path.expanduser(param.datadir)
@@ -270,6 +270,7 @@ class Ncio(object):
         if nickname not in self.gridvar:
             self.hisvar += [nickname]
 
+    @timeit
     def dohis(self, state, time):
         I0, J0, nxc, nyc, nxe, nye = self.indices
         if not self.singlefile or (self.grid.myrank == 0):
@@ -307,6 +308,7 @@ class Ncio(object):
                 self.MPI.COMM_WORLD.Barrier()
         self.kt += 1
 
+    @timeit
     def dodiags(self, diags, time, kt):
         if self.grid.myrank == 0:
             with Dataset(self.diag_path, "r+") as nc:
