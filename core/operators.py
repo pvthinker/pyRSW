@@ -46,20 +46,27 @@ def vorticity(state, grid, noslip):
 
 @timeit
 def kinenergy(state, param):
-    u = state.u["i"].view("i")
-    U = state.U["i"].view("i")
-    ke = state.ke.view("i")
+    if False:
+        u = state.u["i"].view("i")
+        U = state.U["i"].view("i")
+        ke = state.ke.view("i")
 
-    # ke[:] = u*U/2
-    fd.compke(u, U, ke, 0)
+        # ke[:] = u*U/2
+        fd.compke(u, U, ke, 0)
 
-    v = state.u["j"].view("j")
-    V = state.U["j"].view("j")
-    ke = state.ke.view("j")
+        v = state.u["j"].view("j")
+        V = state.U["j"].view("j")
+        ke = state.ke.view("j")
 
-    # ke += v*V/2
-    fd.compke(v, V, ke, 1)
-
+        # ke += v*V/2
+        fd.compke(v, V, ke, 1)
+    else:
+        u = state.u["i"].view("i")
+        U = state.U["i"].view("i")
+        v = state.u["j"].view("i")
+        V = state.U["j"].view("i")
+        ke = state.ke.view("i")
+        fd.compketotal(u, U, v, V, ke)
 
 @timeit
 def montgomery(state, grid, param):

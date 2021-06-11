@@ -169,6 +169,23 @@ def compile(verbose=False):
                         ke[k, j, i] += (ke0+ke1)*.25
                         ke0 = ke1
 
+    @cc.export("compketotal",
+               "void(f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :])")
+    def compketotal(u, U, v, V, ke):
+        shape = ke.shape
+        ke0j = np.zeros((shape[2],))
+        for k in range(shape[0]):
+            for j in range(shape[1]):
+                ke0i = u[k, j, 0]*U[k, j, 0]
+                for i in range(shape[2]):
+                    ke0j[i] = v[k, j, i]*V[k, j, i]
+                for i in range(shape[2]):
+                    ke1i = u[k, j, i+1]*U[k, j, i+1]
+                    ke1j = v[k, j+1, i]*V[k, j+1, i]
+                    ke[k, j, i] = (ke0i+ke1i+ke0j[i]+ke1j)*.25
+                    ke0i = ke1i
+                    ke0j[i] = ke1j
+
     @cc.export("montgomery",
                "void(f8[:, :, :], f8[:, :], f8[:, :, :], f8[:, :], f8[:], f8, i1[:, :])")
     def montgomery(h, hb, p, area, rho, g, msk):
