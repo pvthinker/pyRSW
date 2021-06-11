@@ -224,9 +224,8 @@ class Field(object):
     def __setitem__(self, elem, val):
         self.view()[elem] = val
 
-    @timeit
     def setview(self, idx):
-        if self.activeview != idx and not self.locked:
+        if (self.activeview != idx) and (not self.locked):
             # copy the current array into the desired one
             current = self.data[self.activeview]
             desired = self.data[idx]
@@ -234,8 +233,12 @@ class Field(object):
                 axes = [1, 0]
             elif self.ndim == 3:
                 axes = [0, 2, 1]
-            desired[:] = np.transpose(current, axes)
+            self.flipaxes(current, desired, axes)
         self.activeview = idx
+
+    @timeit
+    def flipaxes(self, current, desired, axes):
+        desired[:] = np.transpose(current, axes)
 
     def view(self, idx=None):
         if idx == self.activeview or idx is None:
