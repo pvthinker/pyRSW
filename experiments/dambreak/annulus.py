@@ -18,7 +18,7 @@ param.nx = 128*reso
 param.Lx = 2.
 param.Ly = 1.
 param.auto_dt = False
-param.geometry = "perio_x"
+param.geometry = "perio_y"
 param.coordinates = "cylindrical"
 param.cfl = 0.2
 param.dt = 0.8e-2/reso
@@ -58,7 +58,7 @@ def vortex(xx, yy, **kwargs):
         m = np.cos(d0/d*(np.pi/2))
         m[d0 > d] = 0.
     else:
-        m = np.exp(-d2/(2*d**2))-0.7
+        m = np.exp(-d2/(2*d**2))
     return m
 
 
