@@ -33,6 +33,9 @@ class Cylindrical():
         self.param = param
         infos = topo.get_domain_decomposition(param)
 
+        msg = "the geometry cannot be periodic in x with cylindrical coordinates"
+        assert "x" not in param.geometry, msg
+
         self.dtheta = (param.theta[1]-param.theta[0]) / (param.npx*param.nx)
         self.dr = (param.r[1]-param.r[0]) / (param.npy*param.ny)
         self.i0 = infos['loc'][-1]*param.nx
@@ -40,11 +43,11 @@ class Cylindrical():
 
     def theta(self, j, i):
         """ theta """
-        return index(j+self.j0, i+self.i0, "i")*self.dtheta+self.param.theta[0]
+        return index(j+self.j0, i+self.i0, "j")*self.dtheta+self.param.theta[0]
 
     def r(self, j, i):
         """ r """
-        return index(j+self.j0, i+self.i0, "j")*self.dr+self.param.r[0]
+        return index(j+self.j0, i+self.i0, "i")*self.dr+self.param.r[0]
 
     def x(self, j, i):
         return self.r(j, i)*np.cos(self.theta(j, i))
@@ -52,11 +55,11 @@ class Cylindrical():
     def y(self, j, i):
         return self.r(j, i)*np.sin(self.theta(j, i))
 
-    def idx2(self, j, i):
+    def idy2(self, j, i):
         """ arc length along theta """
         return 1./(self.r(j, i)*self.dtheta)**2
 
-    def idy2(self, j, i):
+    def idx2(self, j, i):
         """ arc length along r """
         return ones(j, i)/(self.dr**2)
 
