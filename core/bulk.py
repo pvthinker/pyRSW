@@ -51,8 +51,8 @@ class Bulk(object):
             # in short: q**2 is materially conserved
             # and sum(q**2 * h) is the bulk conserved quantity
 
-            K = fd.sum_horiz(ke, h, j0, j1, i0, i1)
-            P = fd.sum_horiz(p, h, j0, j1, i0, i1)
+            K = fd.sum_horiz(ke, h, msk, j0, j1, i0, i1)
+            P = fd.sum_horiz(p, h, msk, j0, j1, i0, i1)
             Q = fd.sum2_horiz(pv, h, j0, j1, i0, i1)
 
             if self.nprocs > 1:

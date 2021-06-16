@@ -428,8 +428,8 @@ def compile(verbose=False):
                         dfield[k, j, i-1] -= f
 
     @cc.export("sum_horiz",
-               "f8(f8[:, :, :], f8[:, :, :], i4, i4, i4, i4)")
-    def sum_horiz(phi, h, j0, j1, i0, i1):
+               "f8(f8[:, :, :], f8[:, :, :], i1[:, :], i4, i4, i4, i4)")
+    def sum_horiz(phi, h, msk, j0, j1, i0, i1):
         """
         Compute sum(phi * h), excluding the halo
         """
@@ -438,7 +438,8 @@ def compile(verbose=False):
         for k in range(nz):
             for j in range(j0, j1):
                 for i in range(i0, i1):
-                    sumh += phi[k, j, i]*h[k, j, i]
+                    if msk[j,i] == 1:
+                        sumh += phi[k, j, i]*h[k, j, i]
         return sumh
 
     @cc.export("sum2_horiz",
