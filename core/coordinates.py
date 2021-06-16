@@ -36,8 +36,8 @@ class Cylindrical():
         msg = "the geometry cannot be periodic in x with cylindrical coordinates"
         assert "x" not in param.geometry, msg
 
-        self.dtheta = (param.theta[1]-param.theta[0]) / (param.npx*param.nx)
-        self.dr = (param.r[1]-param.r[0]) / (param.npy*param.ny)
+        self.dtheta = (param.theta[1]-param.theta[0]) / (param.npy*param.ny)
+        self.dr = (param.r[1]-param.r[0]) / (param.npx*param.nx)
         self.i0 = infos['loc'][-1]*param.nx
         self.j0 = infos['loc'][-2]*param.ny
 
