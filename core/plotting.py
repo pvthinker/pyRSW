@@ -86,6 +86,7 @@ class Figure(object):
         self.ax1.set_title(self.titlestr % (self.plotvar, time/self.tu))
         self.im.set_clim(vmin=vmin, vmax=vmax)
         self.fig.canvas.draw()
+        plt.pause(1e-4)
         if self.param.generate_mp4:
             self.mov.addframe()
 
