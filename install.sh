@@ -9,6 +9,21 @@ echo "--------------------------------------------------------------------------
 echo ""
 echo " Installing pyRSW"
 echo ""
+echo "It is recommended to create a virtual environnement. "
+echo "If you are using anaconda then you may create the 'pyrsw' environment with"
+echo ""
+echo "> conda env create -f environment.yml"
+echo ""
+echo "then whenever you want to use pyrsw, switch to this environement with"
+echo ""
+echo "> conda activate pyrsw"
+echo ""
+echo "Are you ok with you environment? (y/n)"
+read ok
+if [ $ok = "n" ]; then
+   exit 42
+fi
+
 if [ ! -d "$pydir" ]; then
     echo "  Create $pydir"
     mkdir $pydir
@@ -35,6 +50,30 @@ cat > $pydir/activate.csh << EOF
 setenv PYTHONPATH \$PYTHONPATH:`pwd`/core
 echo Python now knows that pyRSW is in `pwd`
 EOF
+
+# for fish users
+cat > $pydir/activate.fish << EOF
+set -gx PYTHONPATH (pwd)/core
+echo Python now knows that pyRSW is in (pwd)
+EOF
+
+# compile the modules with module
+echo "--------------------------------------------------------------------------------"
+echo ""
+echo " Compile modules with Numba"
+echo ""
+{
+    # try
+    cd core
+    python3 compile.py &&
+    cd ..
+
+} || {
+    #catch
+    echo "Unable to compile"
+    echo "Are you sure numba is installed?"
+    exit
+}
 
 # copy the experiment into
 

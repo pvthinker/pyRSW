@@ -5,6 +5,9 @@ fillvalue = -9.
 
 
 def compile(verbose=False):
+
+    print("** Compile the buffershalo module with numba")
+
     cc = CC("buffers_halo")
     cc.verbose = verbose
     @cc.export("a3_to_buf", "f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], f8[:, :, :], i4, i4, i4, i4, i1, i1, i1")
