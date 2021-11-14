@@ -53,8 +53,8 @@ EOF
 
 # for fish users
 cat > $pydir/activate.fish << EOF
-set -gx PYTHONPATH (pwd)/core
-echo Python now knows that pyRSW is in (pwd)
+set -gx PYTHONPATH `(pwd)`/core
+echo Python now knows that pyRSW is in `(pwd)`
 EOF
 
 # compile the modules with module
