@@ -1,0 +1,6 @@
+mpi4py >= 2.0.0
+numba
+netCDF4
+matplotlib
+numpy
+pyaml
