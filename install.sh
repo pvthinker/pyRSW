@@ -41,13 +41,13 @@ cp -pR $srcdir/experiments/* $myexpdir
 
 # for bash users
 cat > $pydir/activate.sh << EOF
-export PYTHONPATH=\$PYTHONPATH:`pwd`/core
+export PYTHONPATH=`pwd`/core
 echo Python now knows that pyRSW is in `pwd`
 EOF
 
 # for csh, tcsh users
 cat > $pydir/activate.csh << EOF
-setenv PYTHONPATH \$PYTHONPATH:`pwd`/core
+setenv PYTHONPATH `pwd`/core
 echo Python now knows that pyRSW is in `pwd`
 EOF
 
