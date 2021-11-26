@@ -309,7 +309,7 @@ def compile(verbose=False):
                                 #qi = weno5(q[i-2], q[i-1], q[i], q[i+1], q[i+2], 1)
                             elif porder == 3:
                                 qi = c1*q[i-1]+c2*q[i]+c3*q[i+1]
-                                q  # i = weno3(q[i-1], q[i], q[i+1], 1)
+                                # qi = weno3(q[i-1], q[i], q[i+1], 1)
                             elif porder == 1:
                                 qi = q[i]
                             else:
