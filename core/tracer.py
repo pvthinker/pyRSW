@@ -8,7 +8,7 @@ def tracerflux(state, rhs, param, grid, dt, last=False):
         dtrac = rhs.get(tracname)
         k0, k1, j0, j1, i0, i1 = trac.domainindices
         nz, ny, nx = trac.shape
-        for direction in 'ij':
+        for direction in 'ji':
             velocity = state.U[direction].view(direction)
             order = grid.arrays.tporder[direction].view(direction)
             dfield = dtrac.view(direction)
