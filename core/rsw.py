@@ -78,13 +78,14 @@ class RSW(object):
 
         self.io = iotools.NewNcio(param, grid, batchindex=batchindex)
 
-        if batchindex == 0:
-            self.firstbatch = True
-            param.tend = param.duration
-        else:
-            self.firstbatch = False
-            infos = self.restart.read()
-            self.set_infos_from_model(infos)
+        if self.param.restart:
+            if batchindex == 0:
+                self.firstbatch = True
+                param.tend = param.duration
+            else:
+                self.firstbatch = False
+                infos = self.restart.read()
+                self.set_infos_from_model(infos)
 
         self.t0 = self.t
         self.kite0 = self.kite
