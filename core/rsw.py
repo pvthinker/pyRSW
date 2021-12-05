@@ -2,7 +2,7 @@ import operators
 import tracer
 import timescheme as ts
 from bulk import Bulk
-from ncio import Ncio
+import iotools
 import plotting
 import numpy as np
 import sys
@@ -11,7 +11,8 @@ import variables
 import parameters
 import time
 import os
-import restart
+#import restart
+from restart_tools import Restart
 import timing
 from timing import timeit
 
@@ -64,22 +65,29 @@ class RSW(object):
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
         self.kite = 0
-        if self.param.restart:
-            batchindex = restart.get_batchindex(self)
 
-            if batchindex == 0:
-                self.firstbatch = True
-                param.tend = param.duration
-            else:
-                self.firstbatch = False
-                restart.update_state(self, batchindex-1)
+        output_dir = f"{self.param.datadir}/{self.param.expname}"
+
+        if self.param.restart:
+            self.restart = Restart(self.param, self.grid)
+            batchindex = self.restart.current_index
         else:
             batchindex = 0
         self.batchindex = batchindex
-        self.io = Ncio(self.param, self.grid,
-                       self.state, batchindex=batchindex)
+
+        self.io = iotools.NewNcio(param, grid, batchindex=batchindex)
+
+        if batchindex == 0:
+            self.firstbatch = True
+            param.tend = param.duration
+        else:
+            self.firstbatch = False
+            infos = self.restart.read()
+            self.set_infos_from_model(infos)
+
         self.t0 = self.t
         self.kite0 = self.kite
+
         if grid.myrank == 0:
             self.print_recap()
 
@@ -99,12 +107,6 @@ class RSW(object):
             from mpi4py import MPI
             MPI.COMM_WORLD.Barrier()
 
-        if self.grid.myrank == 0:
-            print(f"Creating output file: {self.io.hist_path}")
-            print(f"Backing up script to: {self.io.script_path}")
-            self.io.backup_scriptfile(sys.argv[0])
-            self.io.backup_paramfile()
-
         self.diagnose_var(self.state)
         self.diagnose_supplementary(self.state)
 
@@ -112,13 +114,11 @@ class RSW(object):
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        self.io.create_history_file(self.state)
-        self.io.dohis(self.state, self.t)
-        nexthistime = self.t0 + self.io.kt * self.param.freq_his
+        self.io.write_hist(self.state, self.t, self.kite)
+        nexthistime = self.t0 + self.io.hist_index * self.param.freq_his
 
-        self.io.create_diagnostic_file(self.diags)
-        self.io.dodiags(self.diags, self.t, self.kite)
-        nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
+        self.io.write_diags(self.diags, self.t, self.kite)
+        nextdiagtime = self.t0 + self.io.diag_index * self.param.freq_diag
 
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.grid, self.state, self.t)
@@ -168,19 +168,19 @@ class RSW(object):
                 self.diagnose_supplementary(self.state)
 
             if timetohis:
-                self.io.dohis(self.state, self.t)
-                nexthistime = self.t0 + self.io.kt * self.param.freq_his
+                self.io.write_hist(self.state, self.t, self.kite)
+                nexthistime = self.t0 + self.io.hist_index * self.param.freq_his
 
             if timetodiag:
                 self.bulk.computebulk(self.state, self.diags, fulldiag=True)
-                self.io.dodiags(self.diags, self.t, self.kite)
-                nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
+                self.io.write_diags(self.diags, self.t, self.kite)
+                nextdiagtime = self.t0 + self.io.diag_index * self.param.freq_diag
 
             walltime = time.time()
             perf = (walltime-walltime0)/ngridpoints
             tu = self.param.timeunit
 
-            time_string = f"\r n={self.kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
+            time_string = f"\rn={self.kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
             if self.grid.myrank == 0:
                 print(time_string, end="", flush=True)
 
@@ -189,13 +189,14 @@ class RSW(object):
 
         if blowup:
             # save the state for debug
-            self.io.dohis(self.state, self.t)
+            self.io.write_hist(self.state, self.t, self.kite)
 
         if self.param.restart:
-            restart.saverestart(self)
+            infos = self.get_infos_from_model()
+            self.restart.write(infos)
 
         if self.grid.myrank == 0:
-            print()
+            print("\n")
             print(self.termination_status, flush=True)
 
             wt = walltime-starttime
@@ -203,7 +204,7 @@ class RSW(object):
                 nite = self.kite - self.kite0
                 print(
                     f"Wall time: {wt:.3} s -- {wt/nite:.2e} s/iteration")
-            print(f"Output written to: {self.io.hist_path}")
+            print(f"Output written to: {self.io.history_file}")
 
         if np.prod(self.grid.procs) > 1:
             MPI.COMM_WORLD.Barrier()
@@ -228,7 +229,7 @@ class RSW(object):
         dstate.set_to_zero()
         # transport the tracers
         tracer.tracerflux(state, dstate, self.param,
-                       self.grid, self.dt, last=last)
+                          self.grid, self.dt, last=last)
         # vortex force
         operators.vortex_force(state, dstate, self.param, self.grid)
         # bernoulli
@@ -305,6 +306,37 @@ class RSW(object):
         #             var[..., :nh+1] = var[..., -nh2-1:-nh]
         #             var[..., -nh-1:] = var[..., nh:nh2+1]
 
+    def get_infos_from_model(self):
+        """
+        Extract the model data to be stored in the restart
+
+        return the informations in the form of a dictionnary
+        """
+        stateinfos = {}
+        state = self.state
+        prognostic_scalars = state.get_prognostic_scalars()
+        for scalar in prognostic_scalars:
+            stateinfos[scalar] = state.get(scalar).view("i")
+        stateinfos["t"] = self.t
+        stateinfos["kite"] = self.kite
+        return stateinfos
+
+    def set_infos_from_model(self, stateinfos):
+        """
+        Set the model from the informations read in the restart
+        """
+        state = self.state
+        prognostic_scalars = state.get_prognostic_scalars()
+        for scalar in prognostic_scalars:
+            state.get(scalar).view("i").flat = stateinfos[scalar]
+        self.diagnose_var(state)
+        self.diagnose_supplementary(state)
+        self.t = stateinfos["t"]
+        self.kite = stateinfos["kite"]
+        if self.grid.myrank == 0:
+            print(f"  Resuming from time={self.t:.2f} / ite={self.kite}")
+        self.param.tend = self.t+self.param.duration
+
     def compute_dt(self):
 
         if self.param.auto_dt:
@@ -356,7 +388,7 @@ class RSW(object):
             f"  grid size : {nblayers} layer{s} {npy*ny} x {npx*nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
         print(f"  {parallel}")
-        if (self.param.restart) and (self.batchindex>0):
+        if (self.param.restart) and (self.batchindex > 0):
             restart = f"restart from restart_{self.batchindex-1:02}"
             print(f"  {restart}")
         print("")

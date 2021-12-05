@@ -31,10 +31,10 @@ param.dt = 0.8e-2/reso
 param.tend = 5
 
 # the choice below was the default in the old rsw code
-param.VF_linear = True  # default: False
-param.MF_linear = True  # default: False
+param.VF_linear = False  # default: False
+param.MF_linear = False  # default: False
 param.VF_order = 5  # default: 5
-param.MF_order = 1  # default: 5
+param.MF_order = 5  # default: 5
 
 param.plotvar = "pv"
 param.freq_plot = 20

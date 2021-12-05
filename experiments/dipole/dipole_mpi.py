@@ -15,7 +15,7 @@ import geostrophy as geos
 
 param = Param()
 
-param.expname = "dipole"
+param.expname = "dipole_mpi"
 
 # allow to easily increase the grid resolution. To double it, reso = 2
 reso = 1
