@@ -109,6 +109,10 @@ class State(object):
             string += [f"  - {nickname:4}: {t:9} : {name}"]
         return "\n".join(string)
 
+    def __getitem__(self, scalar_name):
+        assert scalar_name in self.toc
+        return self.get(scalar_name).view("i")
+
     def get(self, nickname):
         return getattr(self, nickname)
 
@@ -116,12 +120,24 @@ class State(object):
         """Return a list of the nicknames of the prognostic scalars."""
         return [v for v, prognostic in self.toc.items() if prognostic]
 
+    def get_arrays(self):
+        return list(self.toc.keys())
+
+    def get_prognostic_variables(self):
+        return [nickname for nickname, var in self.variables.items()
+                if var["prognostic"]]
+
     def duplicate_prognostic_variables(self):
         """Return a new state with new arrays for prognostic variables."""
-        list_of_variables = []
         prognostic_variables = {nickname: var for nickname,
-                                var in modelvar.items() if var["prognostic"]}
+                                var in self.variables.items() if var["prognostic"]}
         return State(self.param, prognostic_variables)
+
+    def new_state_from(self, list_variables):
+        variables = {nickname: var
+                     for nickname, var in self.variables.items()
+                     if nickname in list_variables}
+        return State(self.param, variables)
 
     def set_to_zero(self):
         """ set prognostic variables to zero """
@@ -170,6 +186,16 @@ class Vector(object):
         vector = getattr(self, self.nickname)
         return vector[component]
 
+    def lock(self):
+        vector = getattr(self, self.nickname)
+        for comp in "ij":
+            vector[comp].lock()
+
+    def unlock(self):
+        vector = getattr(self, self.nickname)
+        for comp in "ij":
+            vector[comp].unlock()
+
 
 class Field(object):
     def __init__(self, nickname, var, param, stagg=""):
@@ -187,6 +213,7 @@ class Field(object):
         else:
             self.dtype = "d"  # default type for arrays is float8
         self.locked = False
+        self.islocked = False
 
         nh = param["nh"]
         infos = topo.get_domain_decomposition(param)
@@ -225,7 +252,7 @@ class Field(object):
         self.view()[elem] = val
 
     def setview(self, idx):
-        if (self.activeview != idx) and (not self.locked):
+        if (self.activeview != idx) and (not self.islocked):
             # copy the current array into the desired one
             current = self.data[self.activeview]
             desired = self.data[idx]
@@ -239,6 +266,17 @@ class Field(object):
     @timeit
     def flipaxes(self, current, desired, axes):
         desired[:] = np.transpose(current, axes)
+
+    def lock(self):
+        """ synchronize all views and prevent transpose"""
+        self.islocked = False
+        idx = "ij".replace(self.activeview, "")
+        self.setview(idx)
+        self.islocked = True
+
+    def unlock(self):
+        """ restore desynchronized views and allow transpose"""
+        self.islocked = False
 
     def view(self, idx=None):
         if idx == self.activeview or idx is None:
@@ -281,11 +319,9 @@ class Field(object):
 
 
 if __name__ == "__main__":
-    param = {"nz": 2, "ny": 256, "nx": 256, "nh": 2}
-    neighbours = [(0, -1), (0, 1)]
-    param["neighbours"] = neighbours
-    param["rho"] = [1., 1.1]
-    param["g"] = 1.
+    from parameters import Param
+    param = Param()
+    topo.topology = param.geometry
 
     state = State(param, modelvar)
     u = state.u
@@ -303,3 +339,5 @@ if __name__ == "__main__":
     # another way to assign
     ux.flat[:] = np.arange(len(ux.flat))
     print(ux)
+
+    print(state)

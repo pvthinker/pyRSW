@@ -64,6 +64,7 @@ class RSW(object):
         self.timescheme = ts.Timescheme(param, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
+        self.compute_dt()
         self.kite = 0
 
         output_dir = f"{self.param.datadir}/{self.param.expname}"
@@ -137,7 +138,7 @@ class RSW(object):
 
             if nprocs > 1:
                 MPI.COMM_WORLD.Barrier()
-            self.dt = self.compute_dt()
+            self.compute_dt()
             t0 = time.time()
             blowup = self.forward()
             t1 = time.time()
@@ -239,14 +240,24 @@ class RSW(object):
             assert hasattr(
                 self, "forcing"), "you forgot to attach forcing in the user script"
             self.forcing.add(state, dstate, t)
+        state.u.unlock()
+        state.h.unlock()
 
     @timeit
     def diagnose_var(self, state, full=False):
         self.applybc(state.h, full=full)
         self.applybc(state.ux, full=full)
         self.applybc(state.uy, full=full)
-        self.grid.cov_to_contra(state)
 
+        state.u.lock()
+        state.h.lock()
+
+        state.U.unlock()
+        self.grid.cov_to_contra(state)
+        state.U.lock()
+
+        state.vor.unlock()
+        state.ke.unlock()
         state.vor[:] = 0.
         if not self.param.linear:
             operators.vorticity(state, self.grid, self.param.noslip)
@@ -254,7 +265,12 @@ class RSW(object):
             operators.kinenergy(state, self.param)
 
         self.applybc(state.vor)
+        state.vor.lock()
+        state.ke.lock()
+
+        state.p.unlock()
         operators.montgomery(state, self.grid, self.param)
+        state.p.lock()
 
     def diagnose_supplementary(self, state):
         operators.comppv_c(state, self.grid)
@@ -349,12 +365,12 @@ class RSW(object):
             vmax = max(c_max, U_max)
             # vmax = c_max+U_max
             if vmax == 0.0:
-                return self.param.dt_max
+                self.dt = self.param.dt_max
             else:
                 dt = self.param.cfl / vmax
-                return min(dt, self.param.dt_max)
+                self.dt = min(dt, self.param.dt_max)
         else:
-            return self.param.dt
+            self.dt = self.param.dt
 
     def signal_handler(self, signal, frame):
         if self.grid.myrank == 0:

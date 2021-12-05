@@ -365,12 +365,15 @@ class Grid(object):
 
         self.set_maskv()
 
-        self.arrays.f.view("j")
-        self.arrays.f.locked = True
-        self.arrays.msk.view("j")
-        self.arrays.msk.locked = True
-        self.arrays.mskv.view("j")
-        self.arrays.mskv.locked = True
+        self.arrays.f.lock()
+        self.arrays.msk.lock()
+        self.arrays.mskv.lock()
+        # self.arrays.f.view("j")
+        # self.arrays.f.locked = True
+        # self.arrays.msk.view("j")
+        # self.arrays.msk.locked = True
+        # self.arrays.mskv.view("j")
+        # self.arrays.mskv.locked = True
 
         msk = self.arrays.msk.view("i")
         txporder = self.arrays.tporderx.view("i")
@@ -385,7 +388,10 @@ class Grid(object):
         index_vortexforce(msk, vxporder, self.param.VF_order)
 
         #self.set_coriolis()
-
+        self.arrays.tporderx.lock()
+        self.arrays.vporderx.lock()
+        self.arrays.tpordery.lock()
+        self.arrays.vpordery.lock()
 
     def msku(self):
         mskc = self.arrays.msk.view("i")
