@@ -2,7 +2,8 @@ import operators
 import tracer
 import timescheme as ts
 from bulk import Bulk
-from ncio import Ncio
+#from ncio import Ncio
+import iotools
 import plotting
 import numpy as np
 import sys
@@ -76,8 +77,9 @@ class RSW(object):
         else:
             batchindex = 0
         self.batchindex = batchindex
-        self.io = Ncio(self.param, self.grid,
-                       self.state, batchindex=batchindex)
+        # self.io = Ncio(self.param, self.grid,
+        #                self.state, batchindex=batchindex)
+        self.io = iotools.NewNcio(param, grid, batchindex=batchindex)
         self.t0 = self.t
         self.kite0 = self.kite
         if grid.myrank == 0:
@@ -99,11 +101,11 @@ class RSW(object):
             from mpi4py import MPI
             MPI.COMM_WORLD.Barrier()
 
-        if self.grid.myrank == 0:
-            print(f"Creating output file: {self.io.hist_path}")
-            print(f"Backing up script to: {self.io.script_path}")
-            self.io.backup_scriptfile(sys.argv[0])
-            self.io.backup_paramfile()
+        # if self.grid.myrank == 0:
+        #     print(f"Creating output file: {self.io.hist_path}")
+        #     print(f"Backing up script to: {self.io.script_path}")
+        #     self.io.backup_scriptfile(sys.argv[0])
+        #     self.io.backup_paramfile()
 
         self.diagnose_var(self.state)
         self.diagnose_supplementary(self.state)
@@ -112,13 +114,16 @@ class RSW(object):
 
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        self.io.create_history_file(self.state)
-        self.io.dohis(self.state, self.t)
-        nexthistime = self.t0 + self.io.kt * self.param.freq_his
+        # self.io.create_history_file(self.state)
+        #self.io.dohis(self.state, self.t)
+        self.io.write_hist(self.state, self.t, self.kite)
+        nexthistime = self.t0 + self.io.hist_index * self.param.freq_his
 
-        self.io.create_diagnostic_file(self.diags)
-        self.io.dodiags(self.diags, self.t, self.kite)
-        nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
+        # self.io.create_diagnostic_file(self.diags)
+        #self.io.dodiags(self.diags, self.t, self.kite)
+
+        self.io.write_diags(self.diags, self.t, self.kite)
+        nextdiagtime = self.t0 + self.io.diag_index * self.param.freq_diag
 
         if self.param.plot_interactive:
             fig = plotting.Figure(self.param, self.grid, self.state, self.t)
@@ -168,13 +173,17 @@ class RSW(object):
                 self.diagnose_supplementary(self.state)
 
             if timetohis:
-                self.io.dohis(self.state, self.t)
-                nexthistime = self.t0 + self.io.kt * self.param.freq_his
+                self.io.write_hist(self.state, self.t, self.kite)
+                nexthistime = self.t0 + self.io.hist_index * self.param.freq_his
+                # self.io.dohis(self.state, self.t)
+                # nexthistime = self.t0 + self.io.kt * self.param.freq_his
 
             if timetodiag:
                 self.bulk.computebulk(self.state, self.diags, fulldiag=True)
-                self.io.dodiags(self.diags, self.t, self.kite)
-                nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
+                self.io.write_diags(self.diags, self.t, self.kite)
+                nextdiagtime = self.t0 + self.io.diag_index * self.param.freq_diag
+                # self.io.dodiags(self.diags, self.t, self.kite)
+                # nextdiagtime = self.t0 + self.io.ktdiag * self.param.freq_diag
 
             walltime = time.time()
             perf = (walltime-walltime0)/ngridpoints
@@ -189,7 +198,8 @@ class RSW(object):
 
         if blowup:
             # save the state for debug
-            self.io.dohis(self.state, self.t)
+            self.io.write_hist(self.state, self.t, self.kite)
+            # self.io.dohis(self.state, self.t)
 
         if self.param.restart:
             restart.saverestart(self)
@@ -203,7 +213,8 @@ class RSW(object):
                 nite = self.kite - self.kite0
                 print(
                     f"Wall time: {wt:.3} s -- {wt/nite:.2e} s/iteration")
-            print(f"Output written to: {self.io.hist_path}")
+            #print(f"Output written to: {self.io.hist_path}")
+            print(f"Output written to: {self.io.history_file}")
 
         if np.prod(self.grid.procs) > 1:
             MPI.COMM_WORLD.Barrier()
@@ -228,7 +239,7 @@ class RSW(object):
         dstate.set_to_zero()
         # transport the tracers
         tracer.tracerflux(state, dstate, self.param,
-                       self.grid, self.dt, last=last)
+                          self.grid, self.dt, last=last)
         # vortex force
         operators.vortex_force(state, dstate, self.param, self.grid)
         # bernoulli
@@ -356,7 +367,7 @@ class RSW(object):
             f"  grid size : {nblayers} layer{s} {npy*ny} x {npx*nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
         print(f"  {parallel}")
-        if (self.param.restart) and (self.batchindex>0):
+        if (self.param.restart) and (self.batchindex > 0):
             restart = f"restart from restart_{self.batchindex-1:02}"
             print(f"  {restart}")
         print("")

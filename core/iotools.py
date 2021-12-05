@@ -181,13 +181,14 @@ class NewNcio():
             return filename
 
     def backup_config(self):
-        dest = f"{self.output_directory}/param.pkl"
-        with open(dest, "wb") as fid:
-            pickle.dump(self.param, fid)
+        if self.myrank == 0:
+            dest = f"{self.output_directory}/param.pkl"
+            with open(dest, "wb") as fid:
+                pickle.dump(self.param, fid)
 
-        python_launch_script = sys.argv[0]
-        dest = os.path.join(self.output_directory, f"{self.expname}.py")
-        shutil.copyfile(python_launch_script, dest)
+            python_launch_script = sys.argv[0]
+            dest = os.path.join(self.output_directory, f"{self.expname}.py")
+            shutil.copyfile(python_launch_script, dest)
 
     def write_grid(self):
         xc = self.grid.coord.x(0, self.grid.ic)[0]
@@ -206,7 +207,7 @@ class NewNcio():
         }
         self.hist.write(datagrid)
 
-    def write_state(self, state, time, kt):
+    def write_hist(self, state, time, kt):
         datahist = {
             "time": time,
             "iteration": kt,
@@ -223,7 +224,7 @@ class NewNcio():
                 datahist[name] = var.getproperunits(self.grid)
 
         start = {"time": (self.hist_index, 1)}
-        print("DATAHIST", datahist.keys())
+
         self.hist.write(datahist, nc_start=start)
         self.hist_index += 1
 
