@@ -131,3 +131,9 @@ dmypy.json
 
 # particular to pyRSW
 myexp
+
+# emacs backup
+*~
+
+# NetCDF file -> shouldn't be any
+*.nc
