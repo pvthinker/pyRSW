@@ -11,7 +11,34 @@ def get_expdir(param):
     out_dir = os.path.join(datadir, expname)
     return out_dir
 
+"""
+dependencies:
 
+grid.arrays
+var = self.grid.arrays.variables[nickname]
+grid.procs
+grid.myrank
+grid.xc
+grid.yc
+grid.xe
+grid.ye
+grid.xc.ndim
+grid.xc.shape
+grid.nx
+grid.loc
+grid.arrays.hb.domainindices
+grid.arrays.f.domainindices
+
+state.variables
+var = state.variables[nickname]
+var = state.get(nickname)
+
+var = self.grid.arrays.get(nickname)
+data = var.getproperunits(self.grid)
+var.domainindices
+var.stagg
+k0, k1, j0, j1, i0, i1 = state.get(nickname).domainindices
+"""
 class Ncio(object):
     def __init__(self, param, grid, state, batchindex=0):
         self.param = param
