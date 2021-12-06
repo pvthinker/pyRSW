@@ -1,12 +1,11 @@
 from netCDF4 import Dataset
 from dataclasses import dataclass, field
 import os
-import glob
 import pickle
 import sys
 import shutil
-import variables
 import numpy as np
+from variables import modelvar
 
 
 @dataclass
@@ -110,7 +109,7 @@ class NetCDF_tools():
         return tuple(ncidx)
 
 
-class NewNcio():
+class Ncio():
     """
     Class that handles all the IO for pyRSW
 
@@ -244,7 +243,7 @@ class NewNcio():
             "iteration": kt,
         }
         for name in self.param["var_to_save"]:
-            vartype = variables.modelvar[name]["type"]
+            vartype = modelvar[name]["type"]
             if vartype == "vector":
                 for axis in "xy":
                     compname = name+axis
@@ -357,9 +356,9 @@ def get_hist_infos(param, grid):
     }
 
     for name in param["var_to_save"]:
-        longname = variables.modelvar[name]["name"]
-        units = variables.modelvar[name]["unit"]
-        vartype = variables.modelvar[name]["type"]
+        longname = modelvar[name]["name"]
+        units = modelvar[name]["unit"]
+        vartype = modelvar[name]["type"]
         if vartype == "vector":
             infos += [(name+"x", vardims["u"], longname+" x-component", units)]
             infos += [(name+"y", vardims["v"], longname+" y-component", units)]

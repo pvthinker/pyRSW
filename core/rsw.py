@@ -5,13 +5,11 @@ from bulk import Bulk
 import iotools
 import plotting
 import numpy as np
-import sys
 import signal
 import variables
 import parameters
 import time
 import os
-#import restart
 from restart_tools import Restart
 import timing
 from timing import timeit
@@ -67,8 +65,6 @@ class RSW(object):
         self.compute_dt()
         self.kite = 0
 
-        output_dir = f"{self.param.datadir}/{self.param.expname}"
-
         if self.param.restart:
             self.restart = Restart(self.param, self.grid)
             batchindex = self.restart.current_index
@@ -76,16 +72,16 @@ class RSW(object):
             batchindex = 0
         self.batchindex = batchindex
 
-        self.io = iotools.NewNcio(param, grid, batchindex=batchindex)
+        self.io = iotools.Ncio(param, grid, batchindex=batchindex)
 
         if self.param.restart:
             if batchindex == 0:
                 self.firstbatch = True
-                param.tend = param.duration
             else:
                 self.firstbatch = False
                 infos = self.restart.read()
-                self.set_infos_from_model(infos)
+                self.set_model_from_infos(infos)
+            self.param.tend = self.t+self.param.duration
 
         self.t0 = self.t
         self.kite0 = self.kite
@@ -325,9 +321,11 @@ class RSW(object):
 
     def get_infos_from_model(self):
         """
-        Extract the model data to be stored in the restart
+        Get the model informations to be stored in the restart
 
-        return the informations in the form of a dictionnary
+        Returns
+        -------
+        infos : dict
         """
         stateinfos = {}
         state = self.state
@@ -338,9 +336,13 @@ class RSW(object):
         stateinfos["kite"] = self.kite
         return stateinfos
 
-    def set_infos_from_model(self, stateinfos):
+    def set_model_from_infos(self, stateinfos):
         """
         Set the model from the informations read in the restart
+
+        Parameters
+        ----------
+        infos : dict
         """
         state = self.state
         prognostic_scalars = state.get_prognostic_scalars()
@@ -352,7 +354,7 @@ class RSW(object):
         self.kite = stateinfos["kite"]
         if self.grid.myrank == 0:
             print(f"  Resuming from time={self.t:.2f} / ite={self.kite}")
-        self.param.tend = self.t+self.param.duration
+            print()
 
     def compute_dt(self):
 
@@ -405,9 +407,6 @@ class RSW(object):
             f"  grid size : {nblayers} layer{s} {npy*ny} x {npx*nx} in {param.coordinates} coordinates")
         print(f"  {numerics}")
         print(f"  {parallel}")
-        if (self.param.restart) and (self.batchindex > 0):
-            restart = f"restart from restart_{self.batchindex-1:02}"
-            print(f"  {restart}")
         print("")
 
     def banner(self):
