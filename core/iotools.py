@@ -40,6 +40,7 @@ class NetCDF_tools():
         self.attrs = attrs
         self.dimensions = {dim[0]: dim[1] for dim in dimensions}
         self.variables = {var.nickname: var for var in variables}
+        self.iscreated = False
 
     def create(self):
         """
@@ -63,6 +64,8 @@ class NetCDF_tools():
                 v.standard_name = infos.name
                 v.units = infos.units
 
+        self.iscreated = True
+
     def write(self, variables, nc_start={}, data_start={}):
         """
         Write variables
@@ -82,14 +85,34 @@ class NetCDF_tools():
         data_start : dict{name: (offset, size)}
              same that nc_start but for the data in variables
         """
+
+        errormsg = f"The NetCDF file needs to be created before writing"
+        assert self.iscreated, errormsg
+
         with Dataset(self.filename, "r+") as nc:
+            errormsg = "Problem of dimensions between the data array and what is declared in the NetCDF file"
             for nickname, data in variables.items():
+
                 ncidx = self._get_idx(nickname, nc_start)
+
                 if isinstance(data, np.ndarray):
                     dataidx = self._get_idx(nickname, data_start)
+                    assert self._count_elements(ncidx) == self._count_elements(dataidx), errormsg
                     nc.variables[nickname][ncidx] = data[dataidx]
+
                 else:
+                    assert self._count_elements(ncidx) == 1, errormsg
                     nc.variables[nickname][ncidx] = data
+
+    def _count_elements(self, slicers):
+        """
+        Return the number of elements indexed by a list of slices
+
+        """
+        count = 1
+        for idx in slicers:
+            count *= (idx.stop-idx.start)
+        return count
 
     def _get_idx(self, nickname, nc_start):
         """
