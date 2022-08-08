@@ -179,7 +179,7 @@ class RSW(object):
             tu = self.param.timeunit
 
             time_string = f"\rn={self.kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
-            if self.grid.myrank == 0:
+            if (self.grid.myrank == 0) and (self.kite % 100==0):
                 print(time_string, end="", flush=True)
 
         if self.param.plot_interactive:

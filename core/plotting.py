@@ -34,15 +34,15 @@ class Figure(object):
         self.fig = plt.figure(figsize=(12, 12))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
         if param.plot_type == "imshow":
-            self.im = self.ax1.imshow(z2d, extent=[0, Lx, 0, Ly], cmap='RdBu_r',
+            self.im = self.ax1.imshow(z2d, extent=[0, Lx, 0, Ly], cmap=param.cmap,
                                       interpolation='nearest', origin='lower')
         elif param.plot_type == "pcolormesh":
             ye, xe = grid.ye, grid.xe
-            self.im = self.ax1.pcolormesh(xe, ye, z2d, cmap='RdBu_r')
+            self.im = self.ax1.pcolormesh(xe, ye, z2d, cmap=param.cmap)
         else:
             raise ValueError
 
-        if param.coordinates is not "spherical":
+        if param.coordinates != "spherical":
             hb = grid.arrays.hb.view("i")
             self.ax1.contour(grid.xc, grid.yc, hb, 3, colors=topocolor)
 
