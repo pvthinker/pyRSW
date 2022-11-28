@@ -1,20 +1,28 @@
-try:
-    from pyaml import yaml
-except:
-    try:
-        from ruamel import yaml
-    except:
-        raise ValueError("install Python module: pyaml or ruamel")
+# try:
+#     from pyaml import yaml
+# except:
+#     try:
+#         from ruamel import yaml
+#     except:
+#         raise ValueError("install Python module: pyaml or ruamel")
 
 import os
+import json
 
 configdir = os.path.expanduser("~/.pyrsw")
 paramfile = f"{configdir}/defaults.yaml"
+jsonparamfile = f"{configdir}/defaults.json"
 
 
-def get_param():
-    with open(paramfile, "r") as f:
-        p = yaml.load(f, Loader=yaml.Loader)
+def get_param(mode="json"):
+    if mode == "json":
+        with open(jsonparamfile, "r") as f:
+            lines = f.read()
+            p = json.loads(lines)
+            print("load JSON file")
+    else:
+        with open(paramfile, "r") as f:
+            p = yaml.load(f, Loader=yaml.Loader)
     topics = p.keys()
     param = {}
     for topic in topics:
@@ -23,6 +31,14 @@ def get_param():
             #print(e, p[topic][e])
             param[e] = p[topic][e]["default"]
     return param
+
+
+def convert_to_json():
+    with open(paramfile, "r") as f:
+        p = yaml.load(f, Loader=yaml.Loader)
+
+    with open(jsonparamfile, "w") as f:
+        f.write(json.dumps(p, indent=2))
 
 
 class Param(object):

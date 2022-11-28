@@ -55,7 +55,7 @@ param.H = H
 param.f0 = f
 param.rho = rho
 
-param.dt = 0.5*dx/c
+param.dt = 0.5*dx/c * 25
 param.tend = 50*day
 
 param.freq_his = day/2
@@ -64,7 +64,7 @@ param.timeunit = day # for the print during integration
 
 param.timestepping = "RK3_SSP"
 
-param.noslip = False
+param.noslip = True
 param.var_to_save = ["h", "vor", "pv", "u"]
 
 param.forcing = True
@@ -104,10 +104,13 @@ class Forcing():
         self.param = param
         self.grid = grid
         y = grid.coord.y(grid.jc, grid.ie)
+        x = grid.coord.x(grid.jc, grid.ie)
         y0 = param.Ly/2.
         self.tau = param.tau0*np.cos(np.pi*(y-y0)/param.Ly)
-        self.tau[:, 0] = 0.
-        self.tau[:, -1] = 0.
+        sigma = 100e3
+        self.tau *= (np.tanh(x/sigma)+np.tanh((param.Lx-x)/sigma)-1)
+        #self.tau[:, 0] = 0.
+        #self.tau[:, -1] = 0.
 
         # the grid.dx is because tau is a 1-form
         self.tau *= grid.dx/Hlayers[0]
@@ -116,7 +119,7 @@ class Forcing():
 
         du = dstate.ux.view("i")
 
-        ramp = min(1, (time/(86_400))**2)
+        ramp = min(1, (time/(10*86_400))**2)
 
         du[0] += self.tau*ramp
 

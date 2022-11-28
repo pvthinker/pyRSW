@@ -27,7 +27,7 @@ param.Ly = 1.
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.25
-param.dt = 0.8e-2/reso
+param.dt = 0.8e-2/reso * 10
 param.tend = 5
 
 # the choice below was the default in the old rsw code
@@ -44,7 +44,7 @@ param.colorscheme = "auto"
 param.generate_mp4 = False
 param.timestepping = "RK3_SSP"
 param.f0 = 5.
-param.var_to_save = ["h", "vor", "pv"]
+param.var_to_save = ["h", "vor", "pv", "u"]
 
 
 grid = Grid(param)
@@ -71,7 +71,7 @@ f = param.f0
 d = 0.07  # vortex radius
 dsep = d*1.4  # half distance between the two vortices
 # the vortex amplitude controls the Froude number
-amp = 0.2
+amp = 0.02
 x0 = 0.5
 
 

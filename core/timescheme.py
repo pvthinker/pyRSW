@@ -97,7 +97,10 @@ class Timescheme(object):
             self.ds0 = self.dstate
             self.ds1 = state.duplicate_prognostic_variables()
             self.ds2 = state.duplicate_prognostic_variables()
-
+            self.s1 = state.new_state_from(state.variables)
+            self.s2 = state.new_state_from(state.variables)
+            self.s1.tracers = ["h"]
+            self.s2.tracers = ["h"]
 
     def set(self, rhs, diagnose_var):
         """Assign the right hand side of the model.
@@ -179,7 +182,7 @@ class Timescheme(object):
             self.diagnose_var(state)
     # ----------------------------------------
     @timeit
-    def RK3_SSP(self, state, t, dt, **kwargs):
+    def RK3_SSPold(self, state, t, dt, **kwargs):
         """ RK3 SSP
 
         The three stages are
@@ -228,6 +231,54 @@ class Timescheme(object):
             ds2 = self.ds2.get(scalar_name).view("i")
             #s += (dt/12.) * (8*ds2-ds0-ds1)
             opt.add3(s, ds0, c0, ds1, c1, ds2, c2)
+        self.diagnose_var(state)
+
+
+    @timeit
+    def RK3_SSP(self, state, t, dt, **kwargs):
+        """ RK3 SSP
+
+        The three stages are
+
+        s1 = s^n + dt*L(s^n)
+        s2 = s^n + (dt/4)*( L(s^n)+L(s1) )
+        s^n+1 =  s^n + (dt/6)*( L(s^n)+L(s1)+4*L(s2) )
+
+        or equivalently
+
+        ds0 = L(s)
+        s = s+dt*ds0
+        ds1 = L(s)
+        s = s+(dt/4)*(ds1-3*ds0)
+        ds2 = L(s)
+        s = s+(dt/12)*(8*ds2-ds0-ds1)
+
+        """
+        self.rhs(state, t, self.ds0, last=False)
+        for scalar_name in self.prognostic_scalars:
+            s = state.get(scalar_name).view("i")
+            s1 = self.s1.get(scalar_name).view("i")
+            ds = self.ds0.get(scalar_name).view("i")
+            s1[:] = s + dt * ds
+
+        self.diagnose_var(self.s1)
+
+        self.rhs(self.s1, t+dt, self.ds1, last=False)
+        for scalar_name in self.prognostic_scalars:
+            s = state.get(scalar_name).view("i")
+            s2 =  self.s2.get(scalar_name).view("i")
+            ds0 = self.ds0.get(scalar_name).view("i")
+            ds1 = self.ds1.get(scalar_name).view("i")
+            s2[:] = s + (dt/4)*( ds0+ds1 )
+        self.diagnose_var(self.s2)
+
+        self.rhs(self.s2, t+dt*0.5, self.ds2, last=True)
+        for scalar_name in self.prognostic_scalars:
+            s = state.get(scalar_name).view("i")
+            ds0 = self.ds0.get(scalar_name).view("i")
+            ds1 = self.ds1.get(scalar_name).view("i")
+            ds2 = self.ds2.get(scalar_name).view("i")
+            s += (dt/6.) * (4*ds2+ds0+ds1)
         self.diagnose_var(state)
 
 
