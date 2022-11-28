@@ -92,7 +92,6 @@ class RSW(object):
         if grid.myrank == 0:
             self.print_recap()
 
-
         self.set_barotropic_filter()
 
     def set_barotropic_filter(self):
@@ -107,7 +106,6 @@ class RSW(object):
         self.btcst = g*Tc*dt
         self.Abt = set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt)
 
-            
     def fix_density(self):
         """ Transform param.rho into a numpy array
         for use in the montgomery computation"""
@@ -198,7 +196,7 @@ class RSW(object):
             tu = self.param.timeunit
 
             time_string = f"\rn={self.kite:3d} t={self.t/tu:.2f} dt={self.dt/tu:.4f} his={nexthistime/tu:.2f}/{tend/tu:.2f} perf={perf:.2e} s"
-            if (self.grid.myrank == 0) and (self.kite % 10 ==0):
+            if (self.grid.myrank == 0) and (self.kite % 10 == 0):
                 print(time_string, end="", flush=True)
 
         if self.param.plot_interactive:
@@ -252,7 +250,7 @@ class RSW(object):
         # bernoulli
         operators.bernoulli(state, dstate, self.param, self.grid)
         #
-        if self.param.forcing:# and last:
+        if self.param.forcing:  # and last:
             assert hasattr(
                 self, "forcing"), "you forgot to attach forcing in the user script"
             self.forcing.add(state, dstate, t)
@@ -260,13 +258,13 @@ class RSW(object):
         if True:
             area = self.grid.arrays.vol.view("i")
             h = state.h.view("i")
-            dh = dstate.h.view("i")            
+            dh = dstate.h.view("i")
             u = state.u["i"].view("i")
             v = state.u["j"].view("i")
             du = dstate.u["i"].view("i")
             dv = dstate.u["j"].view("i")
-            
-            cff = area*np.sum(h,axis=0)/self.param.H
+
+            cff = area*np.sum(h, axis=0)/self.param.H
             nz, ny, nx = self.param.nz,  self.param.ny, self.param.nx
             fu = np.zeros((ny, nx+1))
             fv = np.zeros((ny+1, nx))
@@ -275,26 +273,29 @@ class RSW(object):
             dhstar = dh.copy()
             for k in range(nz):
                 hstar[k] = hstar[k]/cff
-                dhstar[k] = dhstar[k]/cff#area**2
+                dhstar[k] = dhstar[k]/cff  # area**2
 
             for k in range(nz):
-                fu[:,1:-1] += du[k,:,1:-1]*(hstar[k,:,1:]+hstar[k,:,:-1])
-                fu[:,1:-1] += u[k,:,1:-1]*(dhstar[k,:,1:]+dhstar[k,:,:-1])
+                fu[:, 1:-1] += du[k, :, 1:-1] * \
+                    (hstar[k, :, 1:]+hstar[k, :, :-1])
+                fu[:, 1:-1] += u[k, :, 1:-1] * \
+                    (dhstar[k, :, 1:]+dhstar[k, :, :-1])
             for k in range(nz):
-                fv[1:-1,:] += dv[k,1:-1,:]*(hstar[k,1:,:]+hstar[k,:-1,:])
-                fv[1:-1,:] += v[k,1:-1,:]*(dhstar[k,1:,:]+dhstar[k,:-1,:])
-                
-            div = (fu[:,1:]-fu[:,:-1]+fv[1:,:]-fv[:-1,:])
-            
+                fv[1:-1, :] += dv[k, 1:-1, :] * \
+                    (hstar[k, 1:, :]+hstar[k, :-1, :])
+                fv[1:-1, :] += v[k, 1:-1, :] * \
+                    (dhstar[k, 1:, :]+dhstar[k, :-1, :])
+
+            div = (fu[:, 1:]-fu[:, :-1]+fv[1:, :]-fv[:-1, :])
+
             dstar = 0.5*self.btcst*linalg.spsolve(self.Abt, div.ravel())
             dstar.shape = (ny, nx)
-            
-            for k in range(nz):
-                du[k, :, 1:-1] += dstar[:,1:]-dstar[:,:-1]
-            for k in range(nz):
-                dv[k, 1:-1, :] += dstar[1:,:]-dstar[:-1,:]
 
-            
+            for k in range(nz):
+                du[k, :, 1:-1] += dstar[:, 1:]-dstar[:, :-1]
+            for k in range(nz):
+                dv[k, 1:-1, :] += dstar[1:, :]-dstar[:-1, :]
+
         state.u.unlock()
         state.h.unlock()
 
@@ -524,7 +525,8 @@ def set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt):
         rows[count] = I
         data[count] = 1-diag
         count += 1
-    
-    A = sparse.coo_matrix((data[:count], (rows[:count], cols[:count])), shape=(N, N))
+
+    A = sparse.coo_matrix(
+        (data[:count], (rows[:count], cols[:count])), shape=(N, N))
 
     return A.tocsr()
