@@ -1,0 +1,333 @@
+{
+  "space": {
+    "Lx": {
+      "default": 1.0,
+      "doc": "Domain length along x",
+      "type": "float"
+    },
+    "Ly": {
+      "default": 1.0,
+      "doc": "Domain length along y",
+      "type": "float"
+    },
+    "theta": {
+      "default": [
+        0,
+        6.283185307179586
+      ],
+      "doc": "Range of azymuth for cylindrical coordinates. Range of latitude for spherical coordinates",
+      "type": "list"
+    },
+    "lat_pole_shift": {
+      "default": 0.0,
+      "doc": "Meridional angle shift for the North Pole. Controls the Coriolis parameter",
+      "type": "float"
+    },
+    "r": {
+      "default": [
+        0.5,
+        2
+      ],
+      "doc": "Range of radius for cylindrical coordinates",
+      "type": "list"
+    },
+    "coordinates": {
+      "default": "cartesian",
+      "doc": "type of coordinates",
+      "avail": "cartesian, cylindrical",
+      "type": "str"
+    },
+    "partialcell": {
+      "default": false,
+      "doc": "Activate the partial cell",
+      "type": "bool"
+    },
+    "openbc": {
+      "default": false,
+      "doc": "Deactivate the periodicity in the halo",
+      "type": "bool"
+    },
+    "barotropicfilter": {
+      "default": false,
+      "doc": "if set apply the barotropic filtering",
+      "type": "bool"
+    },
+    "geometry": {
+      "avail": "closed, perio_x, perio_y, perio_xy",
+      "default": "closed",
+      "doc": "Domain geometry",
+      "type": "str"
+    },
+    "nx": {
+      "default": 128,
+      "doc": "Number of gridpoints in x direction in the local subdomain",
+      "type": "int"
+    },
+    "ny": {
+      "default": 128,
+      "doc": "Number of gridpoints in y direction in the local subdomain",
+      "type": "int"
+    },
+    "nz": {
+      "default": 1,
+      "doc": "Number of layers",
+      "type": "int"
+    },
+    "npx": {
+      "default": 1,
+      "doc": "Number of subdomains in x",
+      "type": "int"
+    },
+    "npy": {
+      "default": 1,
+      "doc": "Number of subdomains in y",
+      "type": "int"
+    },
+    "npz": {
+      "default": 1,
+      "doc": "Number of subdomains in z. It has to be 1",
+      "type": "int"
+    }
+  },
+  "numerics": {
+    "nh": {
+      "default": 3,
+      "doc": "Number of ghost points in the halo",
+      "type": "int"
+    },
+    "timestepping": {
+      "avail": "EF, LF, Heun, RK3_SSP, AB2, AB3, RK4_LS",
+      "default": "RK3_SSP",
+      "doc": "Time scheme",
+      "type": "str"
+    },
+    "VF_linear": {
+      "default": false,
+      "doc": "Use linear interpolation on the vorticity flux",
+      "type": "bool"
+    },
+    "VF_order": {
+      "default": 5,
+      "doc": "Interpolation order for the vorticity flux",
+      "avail": "1, 3, 5",
+      "type": "int"
+    },
+    "MF_linear": {
+      "default": false,
+      "doc": "Use linear interpolation on the mass flux",
+      "type": "bool"
+    },
+    "MF_order": {
+      "default": 5,
+      "doc": "Interpolation order for the mass flux",
+      "avail": "1, 3, 5",
+      "type": "int"
+    }
+  },
+  "output": {
+    "expname": {
+      "default": "myexp",
+      "doc": "Name of the experiment used in the name of the output directory and output files",
+      "avail": "any valid filename(avoid white spaces)",
+      "type": "str"
+    },
+    "datadir": {
+      "default": "~/data/pyRSW",
+      "avail": "any valid path(existent or not) with write access",
+      "doc": "Folder in which the output files of the simulation are stored",
+      "type": "str"
+    },
+    "filemode": {
+      "default": "overwrite",
+      "avail": "overwrite, count, continue",
+      "doc": "Handling of existing output files with the same name",
+      "type": "str"
+    },
+    "physicalunits": {
+      "default": true,
+      "doc": "Transform model native units into physical units",
+      "type": "bool"
+    },
+    "halo_included": {
+      "default": false,
+      "doc": "Whether to store the arrays with the halo or not",
+      "type": "bool"
+    },
+    "restart": {
+      "default": false,
+      "doc": "Whether to use restarts, if activated, the first batch will use the user initial conditions and write a restart at thend, then when relaunched, the model will start from this last restart.",
+      "type": "bool"
+    },
+    "singlefile": {
+      "default": true,
+      "doc": "Whether to write a single history file or one per core",
+      "type": "bool"
+    },
+    "freq_diag": {
+      "default": 0.05,
+      "doc": "Interval of time between two outputs in the diag file",
+      "type": "float"
+    },
+    "freq_his": {
+      "default": 10.0,
+      "doc": "Interval of time between two outputs in the history file",
+      "type": "float"
+    },
+    "nprint": {
+      "default": 20,
+      "doc": "Numer of time steps between two prints",
+      "type": "int"
+    },
+    "var_to_save": {
+      "default": [
+        "h",
+        "u",
+        "vor",
+        "pv"
+      ],
+      "doc": "List of variables names that we want to output in the history file. The variables names have to be consistent with the model",
+      "type": "str"
+    },
+    "hisdtype": {
+      "default": "f",
+      "doc": "Numpy dtype for float in the netCDF file. See np.typecodes",
+      "avail": "efdg",
+      "type": "str"
+    }
+  },
+  "physics": {
+    "g": {
+      "default": 1.0,
+      "doc": "Acceleration of gravity",
+      "type": "float"
+    },
+    "f0": {
+      "default": 1.0,
+      "doc": "Coriolis parameter",
+      "type": "float"
+    },
+    "rho": {
+      "default": 1.0,
+      "doc": "Density of each layer",
+      "type": "list"
+    },
+    "H": {
+      "default": 1.0,
+      "doc": "Thickness of each layer",
+      "type": "list"
+    },
+    "linear": {
+      "default": false,
+      "doc": "If True use the linearized equations",
+      "type": "bool"
+    },
+    "forcing": {
+      "default": false,
+      "doc": "Activate a forcing. Needs to provide the name of the forcing routine",
+      "type": "bool"
+    },
+    "noslip": {
+      "default": false,
+      "doc": "Add a noslip condition along the boundaries",
+      "type": "bool"
+    }
+  },
+  "plotting options": {
+    "cmap": {
+      "avail": "needs to be in the pyplot list",
+      "default": "RdBu_r",
+      "doc": "Set the colormap",
+      "type": "str"
+    },
+    "colorscheme": {
+      "avail": "auto, imposed",
+      "default": "auto",
+      "doc": "Method to adjust the colorscale",
+      "type": "str"
+    },
+    "cax": {
+      "default": [
+        -1.0,
+        1.0
+      ],
+      "doc": "min, max values for the color range",
+      "type": "list"
+    },
+    "freq_plot": {
+      "default": 1,
+      "doc": "Number of iterations between two plotting refresh",
+      "type": "int"
+    },
+    "generate_mp4": {
+      "default": false,
+      "doc": "Generate a mp4 video file on the fly",
+      "type": "bool"
+    },
+    "plotvar": {
+      "default": "h",
+      "doc": "Name of the variable to plot",
+      "avail": "h, u, vor, pv, p, ke",
+      "type": "str"
+    },
+    "imshow_interpolation": {
+      "avail": "nearest, bilinear",
+      "default": "nearest",
+      "doc": "Interpolation scheme for the imshow rendering",
+      "type": "str"
+    },
+    "plot_type": {
+      "avail": "imshow, pcolormesh",
+      "default": "imshow",
+      "doc": "Type of interactive plot, imshow or pcolormesh",
+      "type": "str"
+    },
+    "plot_interactive": {
+      "default": true,
+      "doc": "Set on the interactive plotting. Turn it off to speed up the computation",
+      "type": "bool"
+    },
+    "plotting_module": {
+      "avail": "a_user_file_name",
+      "default": "plotting",
+      "doc": "Give the name of your plotting module(python script). It should look like core/plotting.py",
+      "type": "str"
+    }
+  },
+  "time": {
+    "cfl": {
+      "default": 0.5,
+      "doc": "Desired cfl that sets the time step in the case of auto_dt",
+      "type": "float"
+    },
+    "auto_dt": {
+      "default": false,
+      "doc": "Whether to use a varying time step or a constant one",
+      "type": "bool"
+    },
+    "dt_max": {
+      "default": 0.01,
+      "doc": "Maximum time step to use (for the auto_dt case)",
+      "type": "float"
+    },
+    "dt": {
+      "default": 0.01,
+      "doc": "Time step to use when it is constant",
+      "type": "float"
+    },
+    "tend": {
+      "default": 1.0,
+      "doc": "Integration time",
+      "type": "float"
+    },
+    "duration": {
+      "default": 1.0,
+      "doc": "Integration time",
+      "type": "float"
+    },
+    "timeunit": {
+      "default": 1.0,
+      "doc": "Time unit, used to print the results",
+      "type": "float"
+    }
+  }
+}
