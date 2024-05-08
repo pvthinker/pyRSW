@@ -10,7 +10,7 @@ import os
 import json
 
 configdir = os.path.expanduser("~/.pyrsw")
-paramfile = f"{configdir}/defaults.yaml"
+paramfile = f"{configdir}/defaults.json"
 jsonparamfile = f"{configdir}/defaults.json"
 
 

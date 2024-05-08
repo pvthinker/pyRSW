@@ -1,7 +1,7 @@
 #!/bin/bash
 
 pydir=$HOME/.pyrsw
-default=defaults.yaml
+default=defaults.json
 srcdir=`pwd`
 myexpdir=$srcdir/myexp
 
