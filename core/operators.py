@@ -80,7 +80,9 @@ def montgomery(state, grid, param):
     area = grid.arrays.vol.view("i")
     msk = grid.arrays.msk.view("i")
 
-    fd.montgomery(h, hb, p, area, rho, g, msk)
+    hmean = grid.hmean
+
+    fd.montgomery(h, hmean, hb, p, area, rho, g, msk)
 
 # def montgomery(state, param):
 #     #rho0 = param["rho"]
