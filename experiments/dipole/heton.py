@@ -15,6 +15,7 @@ reso = 2
 param.expname = "heton"
 param.nz = 2
 param.rho = [1., 0.9]
+param.Hlayers = [0.5, 0.5]
 param.ny = 25*reso
 param.nx = 50*reso
 param.Lx = 2.
