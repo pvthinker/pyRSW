@@ -263,6 +263,11 @@
       "doc": "Generate a mp4 video file on the fly",
       "type": "bool"
     },
+    "plotlayer": {
+      "default": 0,
+      "doc": "Index of the layer to plot",
+      "type": "int"
+    },
     "plotvar": {
       "default": "h",
       "doc": "Name of the variable to plot",

@@ -23,13 +23,15 @@ class Figure(object):
         self.tu = self.param.timeunit
         self.plotvar = param.plotvar
         var = state.get(self.plotvar)
-        z2d = var.getproperunits(self.grid)[-1]
+
+        self.kz = param["plotlayer"] # layer to plot
+        z2d = var.getproperunits(self.grid)[self.kz]
 
         topocolor = "#556b2f"  # topography contours are green
 
         self.titlestr = "%s / t=%.2f"
         if param.nz > 1:
-            self.titlestr += " / layer="+f"{self.param.nz-1}"
+            self.titlestr += " / layer="+f"{self.kz}"
 
         self.fig = plt.figure(figsize=(12, 12))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
