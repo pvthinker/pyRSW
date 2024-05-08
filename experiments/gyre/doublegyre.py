@@ -1,7 +1,7 @@
 """
 Double gyre experiment
 
-the three layers case
+the one layer case
 
 """
 import numpy as np
@@ -9,124 +9,75 @@ from parameters import Param
 from grid import Grid
 from rsw import RSW
 
+pi = np.pi
+sin = np.sin
+cos = np.cos
+arccos = np.arccos
 
+a = 6.37122e6
 Omega = 7.292e-5
-f = 9.375e-5
-beta = 1.754e-11
-
-g = 9.81
-day = 86_400.
-
-nlayers = 3
-
-Hlayers = [350., 750., 2900.]
-
-gprimes = [0.025, 0.0125]
-
-
-def get_rhos_from_grimes(g, gprimes):
-    rhos = [1]
-    rho0 = rhos[0]
-    for gprime in gprimes:
-        rhos.append((gprime/g)*rho0+rhos[-1])
-    return rhos
-
-
-rho = get_rhos_from_grimes(g, gprimes)
+g = 9.860616
+day = 86400.
 
 param = Param()
 
-dx = 50e3
-
-param.expname = "doublegyre"
-param.Lx = 5_000e3
-param.Ly = 4_000e3
-
-param.ny = int(param.Ly/dx)
-param.nx = int(param.Lx/dx)
-param.nz = nlayers
+reso = 2
+param.expname = "gyre"
+param.phi = [0, pi/2]
+param.theta = [0.2*pi/2, 0.6*pi/2]
+param.nz = 1
+param.ny = 25*reso
+param.nx = 50*reso
 param.geometry = "closed"
-
-H = sum(Hlayers)
-c = np.sqrt(g*H)
-
-param.g = g
-param.H = H
-param.f0 = f
-param.rho = rho
-
-param.dt = 0.5*dx/c * 25
-param.tend = 50*day
-
-param.freq_his = day/2
-
-param.timeunit = day # for the print during integration
-
+param.coordinates = "spherical"
+param.timeunit = day
+param.dt = 200./reso
+param.tend = 50*day  # 100*param.dt
+param.plotvar = "pv"
+param.freq_plot = 100
+param.freq_his = day
+param.plot_interactive = True
+param.colorscheme = "auto"
 param.timestepping = "RK3_SSP"
-
-param.noslip = True
+param.g = g
+param.H = 4000.
+param.Omega = Omega
+param.sphere_radius = a
+param.noslip = False
 param.var_to_save = ["h", "vor", "pv", "u"]
 
 param.forcing = True
-param.tau0 = 0.02
-
-
-def set_beta_plane(grid):
-    f = grid.arrays.f.view("i")
-    areav = grid.arrays.volv.view("i")
-    ye = grid.ye
-
-    f[:] = param.f0 + beta*ye
-    f *= areav
-
+param.tau0 = 0.01/1e3
 
 grid = Grid(param)
-
-# this is unfortunate to have to set the beta plane
-# in the user script. It should be done in Grid...
-
-set_beta_plane(grid)
-
 grid.finalize()
 
 model = RSW(param, grid)
 h = model.state.h
 area = grid.arrays.vol.view("i")
 
-# layer thicknesses are set there !
-for k in range(nlayers):
-    h[k] = Hlayers[k]
-    h[k] *= area
+h[0] = param.H
+h[0] *= area
 
 
 class Forcing():
-    def __init__(self, param, grid, Hlayers):
+    def __init__(self, param, grid):
         self.param = param
         self.grid = grid
-        y = grid.coord.y(grid.jc, grid.ie)
-        x = grid.coord.x(grid.jc, grid.ie)
-        y0 = param.Ly/2.
-        self.tau = param.tau0*np.cos(np.pi*(y-y0)/param.Ly)
-        sigma = 100e3
-        self.tau *= (np.tanh(x/sigma)+np.tanh((param.Lx-x)/sigma)-1)
-        #self.tau[:, 0] = 0.
-        #self.tau[:, -1] = 0.
+        lat = grid.coord.theta(grid.jc, grid.ie)
+        deltalat = param.theta[1]-param.theta[0]
+        latc = 0.5*(param.theta[1]+param.theta[0])
+        self.tau = param.tau0*np.cos(np.pi*(lat-latc)/(deltalat))
+        self.tau[:, 0] = 0.
+        self.tau[:, -1] = 0.
 
-        # the grid.dx is because tau is a 1-form
-        self.tau *= grid.dx/Hlayers[0]
+        dx = 1/np.sqrt(grid.arrays.invdx.view("i"))
+        self.tau *= dx
 
     def add(self, state, dstate, time):
-
         du = dstate.ux.view("i")
-
-        ramp = min(1, (time/(10*86_400))**2)
-
-        du[0] += self.tau*ramp
-
-        # if you want bottom stress, add it in this
-        # function
-        # on du[-1] and dv[-1] the bottom layers
+        du += self.tau
 
 
-model.forcing = Forcing(param, grid, Hlayers)
+model.forcing = Forcing(param, grid)
 model.run()
