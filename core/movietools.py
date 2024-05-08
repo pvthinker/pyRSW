@@ -11,8 +11,9 @@ class Movie(object):
         canvas_width, canvas_height = self.fig.canvas.get_width_height()
         # Open an ffmpeg process
         outf = '%s.mp4' % name
+        self.outf = outf
         videoencoder = None
-        for v in ['avconv', 'ffmeg']:
+        for v in ['avconv', 'ffmpeg']:
             if subprocess.call(['which', v], stdout=subprocess.PIPE) == 0:
                 videoencoder = v
 

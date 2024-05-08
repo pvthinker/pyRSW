@@ -183,9 +183,6 @@ class RSW(object):
             if (self.grid.myrank == 0) and (self.kite % 10 == 0):
                 print(time_string, end="", flush=True)
 
-        if self.param.plot_interactive:
-            fig.finalize()
-
         if blowup:
             # save the state for debug
             self.io.write_hist(self.state, self.t, self.kite)
@@ -204,6 +201,9 @@ class RSW(object):
                 print(
                     f"Wall time: {wt:.3} s -- {wt/nite:.2e} s/iteration")
             print(f"Output written to: {self.io.history_file}")
+
+            if self.param.plot_interactive:
+                fig.finalize()
 
         if np.prod(self.grid.procs) > 1:
             MPI.COMM_WORLD.Barrier()

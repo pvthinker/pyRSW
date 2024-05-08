@@ -33,7 +33,7 @@ class Figure(object):
         if param.nz > 1:
             self.titlestr += " / layer="+f"{self.kz}"
 
-        self.fig = plt.figure(figsize=(12, 12))
+        self.fig = plt.figure(figsize=(10.24, 7.68))
         self.ax1 = self.fig.add_subplot(1, 1, 1)
         if param.plot_type == "imshow":
             self.im = self.ax1.imshow(z2d, extent=[0, Lx, 0, Ly], cmap=param.cmap,
@@ -94,4 +94,5 @@ class Figure(object):
 
     def finalize(self):
         if self.param.generate_mp4:
+            print(f"video file: {self.mov.outf}")
             self.mov.finalize()
