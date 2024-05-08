@@ -241,10 +241,10 @@ class Ncio():
         """
         Write the model grid arrays into the NetCDF file (just once)
         """
-        xc = self.grid.coord.x(0, self.grid.ic)[0]
-        yc = self.grid.coord.y(self.grid.jc, 0)[:, 0]
-        xe = self.grid.coord.x(0, self.grid.ie)[0]
-        ye = self.grid.coord.y(self.grid.je, 0)[:, 0]
+        xc = self.grid.coord.x(self.grid.jc, self.grid.ic)[0, :]
+        yc = self.grid.coord.y(self.grid.jc, self.grid.ic)[:, 0]
+        xe = self.grid.coord.x(self.grid.jc, self.grid.ie)[0, :]
+        ye = self.grid.coord.y(self.grid.je, self.grid.ic)[:, 0]
         layer = np.arange(self.grid.nz)
         msk = self.grid.arrays.msk.view("i")
         datagrid = {

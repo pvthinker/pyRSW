@@ -181,6 +181,15 @@ class Grid(object):
 
         self.set_coriolis()
 
+        self.set_hmean()
+
+    def set_hmean(self):
+        if self.nz == 1:
+            self.hmean = np.asarray([self.param.H])
+        else:
+            assert hasattr(self.param, "Hlayers")
+            self.hmean = np.asarray(self.param.Hlayers)
+
     def set_coriolis(self):
         f = self.arrays.f.view("i")
         areav = self.arrays.volv.view("i")
@@ -387,7 +396,7 @@ class Grid(object):
         index_tracerflux(msk, typorder, self.param.MF_order)
         index_vortexforce(msk, vxporder, self.param.VF_order)
 
-        #self.set_coriolis()
+        # self.set_coriolis()
         self.arrays.tporderx.lock()
         self.arrays.vporderx.lock()
         self.arrays.tpordery.lock()
@@ -437,11 +446,11 @@ def index_tracerflux(msk, order, maxorder):
                 m1 = m[i-1]
             else:
                 m1 = -1
-            if (i >= 2) and (i < nx) and (m1>0):
+            if (i >= 2) and (i < nx) and (m1 > 0):
                 m3 = m[i-2]+m[i-1]+m[i]
             else:
                 m3 = -1
-            if (i >= 3) and (i < nx-1) and (m3==3):
+            if (i >= 3) and (i < nx-1) and (m3 == 3):
                 m5 = m[i-3]+m[i-2]+m[i-1]+m[i]+m[i+1]
             else:
                 m5 = -1
@@ -484,28 +493,31 @@ def index_vortexforce(mskc, order, maxorder):
                 mskv[j, i+1] += 1
                 mskv[j, i] += 1
 
+    mskv[mskv > 1] = 1
+
     for j in range(ny+1):
         m = mskv[j]
         for i in range(nx+1):
             if (i >= 0) and (i < nx):
                 m1 = m[i]+m[i+1]
+            elif i == nx:
+                m1 = m[i]
             else:
                 m1 = -1
-            if (i >= 1) and (i < nx) and (m1 >=0 ):
+            if (i >= 1) and (i < nx) and (m1 >= 0):
                 m3 = m[i-1]+m[i]+m[i+1]
             else:
                 m3 = -1
-            if (i >= 2) and (i < nx-1) and (m3 >=0):
+            if (i >= 2) and (i < nx-1) and (m3 >= 0):
                 m5 = m[i-2]+m[i-1]+m[i]+m[i+1]+m[i+2]
             else:
                 m5 = -1
 
             if (m5 >= 5) and (maxorder >= 5):
                 order[j, i] = 5
-            elif (m3 >=3) and (maxorder >= 3):
+            elif (m3 >= 3) and (maxorder >= 3):
                 order[j, i] = 3
             elif m1 >= 0:
                 order[j, i] = 1
             else:
                 order[j, i] = 0
-
