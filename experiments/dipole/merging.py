@@ -27,7 +27,7 @@ param.Ly = 1.
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.25
-param.dt = 0.8e-2/reso * 10
+param.dt = 0.8e-2/reso
 param.tend = 5
 
 # the choice below was the default in the old rsw code
