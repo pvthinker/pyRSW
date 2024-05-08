@@ -13,8 +13,6 @@ import os
 from restart_tools import Restart
 import timing
 from timing import timeit
-from scipy import sparse
-from scipy.sparse import linalg
 
 
 fullycompiled = True
@@ -62,7 +60,7 @@ class RSW(object):
         self.fix_density()
         self.bulk = Bulk(param, grid)
         self.diags = {}
-        self.timescheme = ts.Timescheme(param, self.state)
+        self.timescheme = ts.Timescheme(param, grid, self.state)
         self.timescheme.set(self.rhs, self.diagnose_var)
         self.t = 0.
         self.compute_dt()
@@ -91,20 +89,6 @@ class RSW(object):
 
         if grid.myrank == 0:
             self.print_recap()
-
-        self.set_barotropic_filter()
-
-    def set_barotropic_filter(self):
-        dt = self.param.dt
-        Tc = 2*dt
-        g = self.param.g
-        H = self.param.H
-        nx = self.param.nx
-        ny = self.param.ny
-        dx = self.param.Lx/(nx*self.param.npx)
-        dy = dx
-        self.btcst = g*Tc*dt
-        self.Abt = set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt)
 
     def fix_density(self):
         """ Transform param.rho into a numpy array
@@ -254,47 +238,6 @@ class RSW(object):
             assert hasattr(
                 self, "forcing"), "you forgot to attach forcing in the user script"
             self.forcing.add(state, dstate, t)
-
-        if True:
-            area = self.grid.arrays.vol.view("i")
-            h = state.h.view("i")
-            dh = dstate.h.view("i")
-            u = state.u["i"].view("i")
-            v = state.u["j"].view("i")
-            du = dstate.u["i"].view("i")
-            dv = dstate.u["j"].view("i")
-
-            cff = area*np.sum(h, axis=0)/self.param.H
-            nz, ny, nx = self.param.nz,  self.param.ny, self.param.nx
-            fu = np.zeros((ny, nx+1))
-            fv = np.zeros((ny+1, nx))
-
-            hstar = h.copy()
-            dhstar = dh.copy()
-            for k in range(nz):
-                hstar[k] = hstar[k]/cff
-                dhstar[k] = dhstar[k]/cff  # area**2
-
-            for k in range(nz):
-                fu[:, 1:-1] += du[k, :, 1:-1] * \
-                    (hstar[k, :, 1:]+hstar[k, :, :-1])
-                fu[:, 1:-1] += u[k, :, 1:-1] * \
-                    (dhstar[k, :, 1:]+dhstar[k, :, :-1])
-            for k in range(nz):
-                fv[1:-1, :] += dv[k, 1:-1, :] * \
-                    (hstar[k, 1:, :]+hstar[k, :-1, :])
-                fv[1:-1, :] += v[k, 1:-1, :] * \
-                    (dhstar[k, 1:, :]+dhstar[k, :-1, :])
-
-            div = (fu[:, 1:]-fu[:, :-1]+fv[1:, :]-fv[:-1, :])
-
-            dstar = 0.5*self.btcst*linalg.spsolve(self.Abt, div.ravel())
-            dstar.shape = (ny, nx)
-
-            for k in range(nz):
-                du[k, :, 1:-1] += dstar[:, 1:]-dstar[:, :-1]
-            for k in range(nz):
-                dv[k, 1:-1, :] += dstar[1:, :]-dstar[:-1, :]
 
         state.u.unlock()
         state.h.unlock()
@@ -485,48 +428,3 @@ class RSW(object):
                 print(" "*10+l)
 
 
-def set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt):
-    N = nx*ny
-    rows = np.zeros((5*N,), dtype="i")
-    cols = np.zeros((5*N,), dtype="i")
-    data = np.zeros((5*N,))
-    count = 0
-    G = np.arange(N)
-    G.shape = (ny, nx)
-    coef = -g*H*Tc*dt/dx**2
-    for j, i in np.ndindex((ny, nx)):
-        I = G[j, i]
-        diag = 0
-        if i > 0:
-            cols[count] = G[j, i-1]
-            rows[count] = I
-            data[count] = coef
-            count += 1
-            diag += coef
-        if i < nx-1:
-            cols[count] = G[j, i+1]
-            rows[count] = I
-            data[count] = coef
-            count += 1
-            diag += coef
-        if j > 0:
-            cols[count] = G[j-1, i]
-            rows[count] = I
-            data[count] = coef
-            count += 1
-            diag += coef
-        if j < ny-1:
-            cols[count] = G[j+1, i]
-            rows[count] = I
-            data[count] = coef
-            count += 1
-            diag += coef
-        cols[count] = I
-        rows[count] = I
-        data[count] = 1-diag
-        count += 1
-
-    A = sparse.coo_matrix(
-        (data[:count], (rows[:count], cols[:count])), shape=(N, N))
-
-    return A.tocsr()

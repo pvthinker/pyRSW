@@ -30,6 +30,7 @@ timeschemes, we need to store more than just one dstate
 """
 import optimize as opt
 from timing import timeit
+from barotropicfilter import BarotropicFilter
 
 class Timescheme(object):
     """Catalogue and handler of timeschemes.
@@ -60,9 +61,13 @@ class Timescheme(object):
 
     """
 
-    def __init__(self, param, state):
+    def __init__(self, param, grid, state):
         """Initialise the time stepping method specified in param."""
         self.prognostic_scalars = state.get_prognostic_scalars()
+
+        self.apply_bt_filter = param["barotropicfilter"]
+        if self.apply_bt_filter:
+            self.barotropicfilter = BarotropicFilter(param, grid)
 
         # Activate the timescheme given in param
         timestepping = param['timestepping']
@@ -254,31 +259,65 @@ class Timescheme(object):
         s = s+(dt/12)*(8*ds2-ds0-ds1)
 
         """
+        if self.apply_bt_filter:
+            self.barotropicfilter.set_height_normalization(state)
+
         self.rhs(state, t, self.ds0, last=False)
+        if self.apply_bt_filter:
+            self.barotropicfilter.compute_dstar(state, self.ds0)
+
         for scalar_name in self.prognostic_scalars:
             s = state.get(scalar_name).view("i")
             s1 = self.s1.get(scalar_name).view("i")
             ds = self.ds0.get(scalar_name).view("i")
             s1[:] = s + dt * ds
 
+        if self.apply_bt_filter:
+            self.barotropicfilter.apply_dstar(self.s1, dt)
+
         self.diagnose_var(self.s1)
 
         self.rhs(self.s1, t+dt, self.ds1, last=False)
+        add(self.ds0, 0.5, self.ds1, 0.5, self.prognostic_scalars)
+
+        if self.apply_bt_filter:
+            self.barotropicfilter.compute_dstar(state, self.ds0)
+
         for scalar_name in self.prognostic_scalars:
             s = state.get(scalar_name).view("i")
             s2 =  self.s2.get(scalar_name).view("i")
             ds0 = self.ds0.get(scalar_name).view("i")
-            ds1 = self.ds1.get(scalar_name).view("i")
-            s2[:] = s + (dt/4)*( ds0+ds1 )
+            #ds1 = self.ds1.get(scalar_name).view("i")
+            #s2[:] = s + (dt/4)*( ds0+ds1 )
+            s2[:] = s + (0.5*dt)*( ds0 )
+
+        if self.apply_bt_filter:
+            self.barotropicfilter.apply_dstar(self.s2, dt*0.5)
+
         self.diagnose_var(self.s2)
 
         self.rhs(self.s2, t+dt*0.5, self.ds2, last=True)
+        add(self.ds0, 1./3, self.ds2, 2./3, self.prognostic_scalars)
+
+        if self.apply_bt_filter:
+            self.barotropicfilter.compute_dstar(state, self.ds0)
+
         for scalar_name in self.prognostic_scalars:
             s = state.get(scalar_name).view("i")
             ds0 = self.ds0.get(scalar_name).view("i")
-            ds1 = self.ds1.get(scalar_name).view("i")
-            ds2 = self.ds2.get(scalar_name).view("i")
-            s += (dt/6.) * (4*ds2+ds0+ds1)
+            # ds1 = self.ds1.get(scalar_name).view("i")
+            # ds2 = self.ds2.get(scalar_name).view("i")
+            #s += (dt/6.) * (4*ds2+ds0+ds1)
+            s += dt * ds0
+
+        if self.apply_bt_filter:
+            self.barotropicfilter.apply_dstar(state, dt)
+
         self.diagnose_var(state)
 
 
+def add(dstate0, coef0, dstate1, coef1, prognostic_scalars):
+    for scalar_name in prognostic_scalars:
+        ds0 = dstate0.get(scalar_name).view("i")
+        ds1 = dstate1.get(scalar_name).view("i")
+        ds0[:] = ds0*coef0+ds1*coef1
