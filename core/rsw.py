@@ -428,3 +428,6 @@ class RSW(object):
                 print(" "*10+l)
 
 
+def check_nan(state):
+    ux = state.ux.view("i")
+    assert ~np.isnan(ux).any()

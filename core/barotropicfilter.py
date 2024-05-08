@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg
+import topology as topo
 
 class BarotropicFilter:
     def __init__(self, param, grid):
@@ -22,14 +23,26 @@ class BarotropicFilter:
         self.nx = nx
         self.ny = ny
         self.nz = nz
-        self.Abt = set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt)
-        self.Abt2 = set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt*.5)
+        self.perio_x = param.geometry == "perio_x"
+        if self.perio_x:
+            raise NotImplementedError("periodic BC not implemented with barotropic filter")
+        shapec, _ = topo.get_shape_and_domainindices(param, "xyz", "")
+
+
+        self.Abt = set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt, perio_x=self.perio_x)
+        self.Abt2 = set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt*.5, perio_x=self.perio_x)
 
         self.area = grid.arrays.vol.view("i")
-        self.fu = np.zeros((ny, nx+1))
-        self.fv = np.zeros((ny+1, nx))
-        self.hstar = np.zeros((nz, ny, nx))
-        self.dhstar = np.zeros((nz, ny, nx))
+        shape2c, _ = topo.get_shape_and_domainindices(param, "xy", "")
+        shapec, _ = topo.get_shape_and_domainindices(param, "xyz", "")
+        shapeu, _ = topo.get_shape_and_domainindices(param, "xy", "x")
+        shapev, _ = topo.get_shape_and_domainindices(param, "xy", "y")
+
+        self.fu = np.zeros(shapeu)
+        self.fv = np.zeros(shapev)
+        self.hstar = np.zeros(shapec)
+        self.dhstar = np.zeros(shapec)
+        self.dstar = np.zeros(shape2c)
 
     def set_height_normalization(self, state):
         if not self.param.barotropicfilter:
@@ -42,7 +55,7 @@ class BarotropicFilter:
         #print(np.max(self.cff),np.max(H)/self.area)
         #stop
         #cff = 1./self.area
-        self.cff = 1/self.area
+        #self.cff = 1/self.area
         for k in range(self.nz):
             self.hstar[k] = h[k]*self.cff
 
@@ -77,13 +90,17 @@ class BarotropicFilter:
                 (self.dhstar[k, 1:, :]+self.dhstar[k, :-1, :])
 
         self.div = (self.fu[:, 1:]-self.fu[:, :-1]+self.fv[1:, :]-self.fv[:-1, :])
+        if self.perio_x:
+            self.div = self.div[:,3:-3]
+            dstar = self.dstar[:,3:-3]
+        else:
+            dstar = self.dstar
 
         if half:
-            self.dstar = 0.25*self.btcst*linalg.spsolve(self.Abt2, self.div.ravel())
+            dstar.flat = 0.25*self.btcst*linalg.spsolve(self.Abt2, self.div.ravel())
         else:
-            self.dstar = 0.5*self.btcst*linalg.spsolve(self.Abt, self.div.ravel())
+            dstar.flat = 0.5*self.btcst*linalg.spsolve(self.Abt, self.div.ravel())
 
-        self.dstar.shape = (self.ny, self.nx)
 
     def apply_dstar(self, state, dt):
         if not self.param.barotropicfilter:
@@ -100,7 +117,7 @@ class BarotropicFilter:
             v[k, 1:-1, :] += dv
 
 
-def set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt):
+def set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt, perio_x=False):
     N = nx*ny
     rows = np.zeros((5*N,), dtype="i")
     cols = np.zeros((5*N,), dtype="i")
@@ -118,8 +135,21 @@ def set_barotropicmatrix(nx, ny, dx, dy, g, H, Tc, dt):
             data[count] = coef
             count += 1
             diag += coef
+        elif perio_x:
+            cols[count] = G[j, -1]
+            rows[count] = I
+            data[count] = coef
+            count += 1
+            diag += coef
+
         if i < nx-1:
             cols[count] = G[j, i+1]
+            rows[count] = I
+            data[count] = coef
+            count += 1
+            diag += coef
+        elif perio_x:
+            cols[count] = G[j, 0]
             rows[count] = I
             data[count] = coef
             count += 1

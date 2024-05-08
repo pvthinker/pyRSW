@@ -506,6 +506,11 @@ def compile(verbose=False):
                     w = (W[j+1, i]+W[j, i])*0.5
                     if mskv[j+1, i]+mskv[j, i] == 2:
                         u[k, j, i] = -(B[j+1, i]-B[j, i])/w
+                    elif  mskv[j+1, i] == 1:
+                        u[k, j, i] = -B[j+1, i]/W[j+1, i]
+                    elif  mskv[j, i] == 1:
+                        u[k, j, i] = +B[j, i]/W[j, i]
+
                     u[k, j, i] *= dx2[j, i]
 
             for j in range(1, ny):
