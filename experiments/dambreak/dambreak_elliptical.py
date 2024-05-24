@@ -27,19 +27,19 @@ param.ny = 25*reso
 param.nx = 50*reso
 param.Lx = 2.
 param.Ly = 1.
-param.partialcell = True
+param.partialcell = False
 param.auto_dt = False
 param.geometry = "closed"
 param.cfl = 0.2
 param.dt = 1./(param.nx*param.npx)
-param.tend = 5.
+param.tend = 1.5
 param.plotvar = "h"
 param.singlefile = True
 param.freq_plot = 5
 param.freq_his = 0.04
 param.plot_interactive = True
 param.colorscheme = "imposed"
-param.cax = [0.78, 1.22]
+param.cax = [0.88, 1.12]
 param.f0 = 10.
 param.noslip = False
 param.var_to_save = ["h", "u", "pv"]
@@ -116,7 +116,7 @@ f = param.f0
 # setup initial conditions
 
 # amplitude of the initial jump
-amp = 0.2
+amp = 0.1
 
 
 h[0] = h0

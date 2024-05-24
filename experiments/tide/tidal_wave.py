@@ -38,7 +38,7 @@ param.freq_plot = 5
 param.freq_his = 0.04
 param.plot_interactive = True
 param.colorscheme = "imposed"
-param.cax = [0.9, 1.1]
+param.cax = [0.98, 1.02]
 param.f0 = 2.
 param.noslip = False
 param.var_to_save = ["h", "u", "pv"]
@@ -135,10 +135,11 @@ class Forcing():
         self.grid = grid
 
         # user parameters
-        amp = 2e-5
+        amp = 5e-6
+        c = (param.g*param.H)**0.5
         wavelength = param.perimeter/3
-        period = wavelength/1.2
-        self.damping = period/2
+        period = wavelength/c
+        self.damping = 1/(2*period)
 
         self.omega = 2*np.pi/period
         kx = 2*np.pi/(wavelength)
